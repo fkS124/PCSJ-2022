@@ -207,18 +207,26 @@ class Game:
                 continue
             if hasattr(collider, "tag") and collider.tag == "beacon":
                 collider.pressed = False
-
-            inside_horizontal = n_rect.top < c_rect.bottom - 1 and n_rect.bottom > c_rect.top + 1
-            inside_vertical = n_rect.left < c_rect.right and n_rect.right > c_rect.left
-
+            if not (n_rect.top < c_rect.bottom - 1 and n_rect.bottom > c_rect.top + 1):
+                continue
             if vel.x > 0:
-                if abs(c_rect.left - n_rect.right) <= vel.x and inside_horizontal:
+                if abs(c_rect.left - n_rect.right) <= vel.x:
                     moving_object.vel.x = c_rect.left - rect.right
+                    break
             elif vel.x < 0:
-                if abs(c_rect.right - n_rect.left) <= - vel.x and inside_horizontal:
+                if abs(c_rect.right - n_rect.left) <= - vel.x:
                     moving_object.vel.x = c_rect.right - rect.left
+                    break
+            else:
+                break
+
+        vel = moving_object.vel
+        n_rect = rect.move(vel)
+        for c_rect, collider in self.collision_rects:
+            if not (n_rect.left < c_rect.right and n_rect.right > c_rect.left):
+                continue
             if vel.y >= 0:
-                if abs(c_rect.top - n_rect.bottom) <= vel.y and inside_vertical and not moving_object.gravity < 0:
+                if abs(c_rect.top - n_rect.bottom) <= vel.y and not moving_object.gravity < 0:
                     moving_object.vel.y = c_rect.top - rect.bottom
                     moving_object.gravity = 0
                     moving_object.jumping = False
@@ -228,12 +236,13 @@ class Game:
                     elif self.game_mode == "menu":
                         if hasattr(collider, "tag") and collider.tag == "beacon":
                             collider.pressed = True
-
+                    break
             elif vel.y < 0:
-                if abs(c_rect.bottom - n_rect.top) <= - vel.y and inside_vertical:
+                if abs(c_rect.bottom - n_rect.top) <= - vel.y:
                     moving_object.vel.y = c_rect.bottom - rect.top
                     if moving_object.jumping:
                         moving_object.gravity = 0
+                break
 
     def add_object(self, object_: Object2d):
         # every time you add an object to the game, add it with this method
