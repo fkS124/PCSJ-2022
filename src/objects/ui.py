@@ -94,6 +94,8 @@ class Text(UiObject):
 
 class Title(Text):
 
+    IN_BACKGROUND = True
+
     def __init__(self, pos: tuple[int, int], font: pg.font.Font, text: str, color: pg.Color, big_scale: float = 2,
                  scaling_delay: int = 500, resize_=(0, 0), scale_=0, shadow_=None):
         super(Title, self).__init__(pos, font, text, color, resize_, scale_, shadow_)

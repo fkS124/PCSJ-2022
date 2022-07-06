@@ -80,9 +80,9 @@ class TileSprite(StaticObject):
         "delay": int (in milliseconds)
     }
     """
-    special_color_set: dict[str, list[pg.Color, pg.Color, pg.Color]] = {
-        "stone": (pg.Color(100, 100, 100), pg.Color(150, 150, 150), pg.Color(180, 180, 180)),
-        "grass": (pg.Color(124, 94, 66), pg.Color(0, 200, 50), pg.Color(185, 148, 60))
+    special_color_set: dict[str, dict[str, pg.Color]] = {
+        "stone": {"default": pg.Color(110, 110, 110)},
+        "grass": {"default": pg.Color(124, 94, 66), "top": pg.Color(0, 200, 50)}
     }
 
     def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(37, 31, 77),
@@ -91,9 +91,6 @@ class TileSprite(StaticObject):
 
         self.unbreakable = unbreakable
 
-        # perspective colors
-        self.color1, self.color2 = None, None
-
         # SPRITE ANIMATION ------------------------------
         self.sprite_loader = sprite_loader
         self.color = color
@@ -101,7 +98,10 @@ class TileSprite(StaticObject):
         if tag in self.sprite_loader.sprites:
             self.surface = self.sprite_loader.sprites[tag]
         elif tag in self.special_color_set:
-            self.color, self.color1, self.color2 = self.special_color_set[tag]
+            self.color = self.special_color_set[tag]["default"]
+            for key, item in self.special_color_set[tag].items():
+                if key in self.colors:
+                    self.colors[key] = item
             self.surface.fill(self.color)
         elif tag == "beacon":
             self.surface.fill(self.color)
@@ -147,17 +147,28 @@ class Map:
     s = 11
     b = 12
 
-    menu_map = [[s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+    menu_map = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, b, g, g, g, b, g, g, g, b, g, g, g, g]]
+    menu_map_gen = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
 
     def __init__(self, app):
 
@@ -168,21 +179,21 @@ class Map:
         self.tile_size = vec(80, 80)
         self.sprite_loader = SpriteLoader(app, self.tile_size.x, self.tile_size.y)
         self.chunk_size = 15
-        self.grid = [[3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 0, 3, 0, 0, 0, 1, 1, 0, 0, 3],
-                     [3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 2, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-                     [3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 3],
-                     [3, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0, 3],
-                     [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-                     [3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3],
-                     [3, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 3]]
+        self.grid = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]]
 
         self.translate = {
             # 3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "star", self.sprite_loader)),
@@ -213,6 +224,7 @@ class Map:
         return self.generate_new_chunk("menu")
 
     def quit_menu(self):
+        self.generated_chunks = {}
         self.menu = False
         self.chunk_size = 15
 
@@ -227,9 +239,14 @@ class Map:
         return (floor(pos.x / (self.chunk_size * self.tile_size.x)),
                 floor(pos.y / (self.chunk_size * self.tile_size.y)))
 
+    def init_game(self):
+        self.generate_new_chunk((0, 0))
+
     def has_neighbour(self, direction: str, obj):
         translate = {'left': (0, -1), 'right': (0, 1), 'top': (-1, 0), 'bottom': (1, 0)}
         row, col, chunk_id_x, chunk_id_y = self.get_index_from_co(vec(obj.rect.topleft))
+
+        print(row, col, chunk_id_x, chunk_id_y)
 
         if self.menu:
             row += translate[direction][0]
@@ -237,7 +254,7 @@ class Map:
             if 0 <= row < len(self.menu_map) and 0 <= col < len(self.menu_map[1]):
                 return self.menu_map[row][col] != 0
             else:
-                return False
+                return False if row != len(self.menu_map)-1 else True
 
         if 0 <= row + translate[direction][0] < self.chunk_size and 0 <= col + translate[direction][1] < self.chunk_size:
             row += translate[direction][0]
@@ -278,8 +295,8 @@ class Map:
                 floor(pos.y / (self.chunk_size * self.tile_size.y)))
 
     def get_current_chunk_objects(self, chunk_id_x: int, chunk_id_y: int) -> (list[Object2d], bool):
-        if self.menu:
-            return self.generated_chunks["menu"]
+        if self.menu and chunk_id_x == 0 and chunk_id_y == 0:
+            return self.generated_chunks["menu"], False
 
         if (id_ := (chunk_id_x, chunk_id_y)) in self.generated_chunks:
             return self.generated_chunks[id_], False
@@ -291,8 +308,11 @@ class Map:
             output = self.translate_chunk(id_, special_key="menu")
         else:
             if id_ not in self.chunks:
-                # TODO: add a generation algorithm
-                self.chunks[id_] = copy(self.grid)
+                if self.menu:
+                    self.chunks[id_] = copy(self.menu_map_gen)
+                else:
+                    # TODO: add a generation algorithm
+                    self.chunks[id_] = copy(self.grid)
             output = self.translate_chunk(id_)
         self.generated_chunks[id_] = output
         return output

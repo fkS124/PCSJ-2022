@@ -2,7 +2,7 @@ import pygame as pg
 vec = pg.math.Vector2
 
 
-def darker(color: tuple[int, ...] | pg.Color, degree: int) -> pg.Color:
+def change(color: tuple[int, ...] | pg.Color, degree: int) -> pg.Color:
     new_color = [color[0] + degree, color[1] + degree, color[2] + degree]
     for idx, col in enumerate(new_color):
         if col > 255:
@@ -27,13 +27,25 @@ class Object2d:
     def __init__(self, pos, size) -> None:
         self.surface: pg.Surface = pg.Surface(size)
         self.rect: pg.Rect = pg.Rect(pos, size)
-        self.color1, self.color2 = None, None
+        self.colors = {'left': None,
+                       'right': None,
+                       'top': None,
+                       'bottom': None}
 
-    def get_color1(self):
-        return self.color1 if self.color1 is not None else darker(self.surface.get_at((5, 0)), 40)
-
-    def get_color2(self):
-        return self.color2 if self.color2 is not None else darker(self.surface.get_at((5, 0)), 60)
+    def get_color(self, direction: str):
+        match direction:
+            case "left":
+                return self.colors['left'] if self.colors['left'] is not None \
+                    else change(self.surface.get_at((0, 5)), 40)
+            case "right":
+                return self.colors['right'] if self.colors['left'] is not None \
+                    else change(self.surface.get_at((0, 5)), 40)
+            case "top":
+                return self.colors['top'] if self.colors['top'] is not None \
+                    else change(self.surface.get_at((0, 5)), 60)
+            case "bottom":
+                return self.colors['bottom'] if self.colors['bottom'] is not None \
+                    else change(self.surface.get_at((0, 5)), 60)
 
     def draw(self, display: pg.Surface, offset=vec(0, 0)) -> None:
         # offset is in order to add a scrolling camera option

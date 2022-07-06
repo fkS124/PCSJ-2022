@@ -124,7 +124,12 @@ class Game:
         loading_thread.loaded["UI"] = True
 
     def start_game(self):
-        pass
+        self.player.rect.topleft = (10, 10)
+        self.game_mode = "normal"
+        self.map.quit_menu()
+        self.map.init_game()
+        self.objects = [self.player]
+        self.ui_objects = []
 
     def start_settings(self):
         pass
@@ -283,9 +288,9 @@ class Game:
             vector -= vec(w * cond[0], h * cond[1])
             pos += vec(w * cond[0], h * cond[1])
 
-            vectors = {'left': vec(vector - vec(w, 0))/length3d,
-                       'right': vec(vector + vec(w, 0))/length3d,
-                       'top': vec(vector - vec(0, h))/length3d,
+            vectors = {'left': vec(vector - vec(w, 0)) / length3d,
+                       'right': vec(vector + vec(w, 0)) / length3d,
+                       'top': vec(vector - vec(0, h)) / length3d,
                        'bottom': vec(vector + vec(0, h)) / length3d}
 
             vector /= length3d
@@ -296,10 +301,10 @@ class Game:
                      'bottom': -vec(0, h)}
 
             colors = {
-                'left': change(color, 0.75),
-                'right': change(color, 1.5),
-                'top': change(color, 2),
-                'bottom': change(color, 0.5)}
+                'left': object_.get_color('left'),
+                'right': object_.get_color('right'),
+                'top': object_.get_color('top'),
+                'bottom': object_.get_color('bottom')}
 
             conditions = {'left': vector[0] < 0,
                           'right': vector[0] > 0,
@@ -350,8 +355,11 @@ class Game:
         current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
         translations = [(0, 0), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (-1, 1), (0, -1), (1, -1)]
         if self.map.menu:
-            translations = []
-            self.drawing_objects.extend(self.map.generated_chunks["menu"])
+            if current_chunk == (0, 0):
+                self.drawing_objects.extend(self.map.generated_chunks["menu"])
+                translations = [(-1, 0), (1, 0)]
+            else:
+                translations = [(0, 0), (-1, 0), (1, 0)]
         elif self.map.horizontal_only:
             translations = [(0, 0), (-1, 0), (1, 0)]
         elif self.map.vertical_only:
