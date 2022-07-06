@@ -29,12 +29,11 @@ class App:
     def __init__(self) -> None:
         if not pg.get_init():
             pg.init()
-
         
         self.screen = pg.display.set_mode((1400, 860), pg.SCALED, vsync=True)
-        if pg.display.Info().current_w + 100 > self.screen.get_width() \
-            or pg.display.Info().current_h + 100 > self.screen.get_height():
-            self.screen = pg.display.set_mode((1400, 860), pg.SCALED | pg.FULLSCREEN, vsync=True)
+    #   if pg.display.Info().current_w + 100 > self.screen.get_width() \
+    #       or pg.display.Info().current_h + 100 > self.screen.get_height():
+    #    self.screen = pg.display.set_mode((1400, 860), pg.SCALED | pg.FULLSCREEN, vsync=True)
         self.running = True
         self.game: Game | None = None
 

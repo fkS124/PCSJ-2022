@@ -48,6 +48,16 @@ def draw_star(pos, size, angle):
     output_pos = pg.Surface((size, size), pg.SRCALPHA)
 
 
+def change(color: tuple[int, ...] | pg.Color, degree: float) -> pg.Color:
+    new_color = [color[0] * degree, color[1] * degree, color[2] * degree]
+    for idx, col in enumerate(new_color):
+        if col > 255:
+            new_color[idx] = 255
+        elif col < 0:
+            new_color[idx] = 0
+    return pg.Color(new_color)
+
+
 class Game:
 
     # the collision tolerance is a multiplier that permits to predict collisions way before they happen
@@ -250,45 +260,47 @@ class Game:
                               key=lambda x: vec(x.rect.center).distance_to(self.camera_following_object.center),
                               reverse=True):
             if not pg.Rect(object_.rect.topleft + self.scroll, object_.rect.size).colliderect(
-                    pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)) or \
-                    object_.DONT_DRAW_PERSPECTIVE:
+                    pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)):
                 continue
 
             pos = vec(object_.rect.topleft) + self.scroll
             w, h = object_.rect.w, object_.rect.h
-            color1, color2 = object_.get_color1(), object_.get_color2()
+            color = object_.surface.get_at((5, 0))
 
-            vecs = [vanishing_point - pos + self.scroll]
-            cond = vecs[0].x > w / 2, vecs[0].y > h / 2
-            directions = ['bottom' if cond[1] else 'top', 'right' if cond[0] else 'left']
+            vector = vanishing_point - pos + self.scroll
+            cond = vector[0] > w/2, vector[1] > h/2
+            way = ['bottom' if cond[1] else 'top', 'right' if cond[0] else 'left']
 
-            vecs[0] -= vec(w * cond[0], h * cond[1])
+            vector -= vec(w * cond[0], h * cond[1])
             pos += vec(w * cond[0], h * cond[1])
 
-            vecs.append(vec(vecs[0] - vec(0, h)) if directions[0] == 'top' else vec(vecs[0] + vec(0, h)))
-            vecs.append(vec(vecs[0] - vec(w, 0)) if directions[1] == 'left' else vec(vecs[0] + vec(w, 0)))
-            vecs = [val / length3d for val in vecs]
+            vectors = {'left': vec(vector - vec(w, 0))/length3d,
+                       'right': vec(vector + vec(w, 0))/length3d,
+                       'top': vec(vector - vec(0, h))/length3d,
+                       'bottom': vec(vector + vec(0, h)) / length3d}
 
-            if directions == ['top', 'left']:
-                if not self.map.has_neighbour('left', object_) or object_ == self.player:
-                    polygon(self.screen, color2, (pos, pos + vec(0, h), pos + vec(0, h) + vecs[1], pos + vecs[0]))
-                if not self.map.has_neighbour('top', object_) or object_ == self.player:
-                    polygon(self.screen, color1, (pos, pos + vec(w, 0), pos + vec(w, 0) + vecs[2], pos + vecs[0]))
-            elif directions == ['top', 'right']:
-                if not self.map.has_neighbour('right', object_) or object_ == self.player:
-                    polygon(self.screen, color2, (pos, pos + vec(0, h), pos + vec(0, h) + vecs[1], pos + vecs[0]))
-                if not self.map.has_neighbour('top', object_) or object_ == self.player:
-                    polygon(self.screen, color1, (pos, pos - vec(w, 0), pos - vec(w, 0) + vecs[2], pos + vecs[0]))
-            elif directions == ['bottom', 'left']:
-                if not self.map.has_neighbour('bottom', object_) or object_ == self.player:
-                    polygon(self.screen, color1, (pos, pos + vec(w, 0), pos + vec(w, 0) + vecs[2], pos + vecs[0]))
-                if not self.map.has_neighbour('left', object_) or object_ == self.player:
-                    polygon(self.screen, color2, (pos, pos - vec(0, h), pos - vec(0, h) + vecs[1], pos + vecs[0]))
-            elif directions == ['bottom', 'right']:
-                if not self.map.has_neighbour('bottom', object_) or object_ == self.player:
-                    polygon(self.screen, color1, (pos, pos - vec(w, 0), pos - vec(w, 0) + vecs[2], pos + vecs[0]))
-                if not self.map.has_neighbour('right', object_) or object_ == self.player:
-                    polygon(self.screen, color2, (pos, pos - vec(0, h), pos - vec(0, h) + vecs[1], pos + vecs[0]))
+            vector /= length3d
+
+            point = {'left': vec(w, 0),
+                     'right': -vec(w, 0),
+                     'top': vec(0, h),
+                     'bottom': -vec(0, h)}
+
+            colors = {
+                'left': change(color, 0.75),
+                'right': change(color, 1.5),
+                'top': change(color, 2),
+                'bottom': change(color, 0.5)}
+
+            conditions = {'left': vector[0] < 0,
+                          'right': vector[0] > 0,
+                          'top': vector[1] < 0,
+                          'bottom': vector[1] > 0}
+
+            for i in range(0, 2):
+                if (not self.map.has_neighbour(way[i], object_) or object_ == self.player) and conditions[way[i]]:
+                    polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i+1]],
+                            pos + point[way[-i+1]] + vectors[way[-i+1]], pos + vector))
 
     def init_background(self, theme: str):
         pass
