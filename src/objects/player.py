@@ -3,7 +3,7 @@ import pygame as pg
 
 from .auto_and_user_objects import UserObject
 from .dyn_and_stat_objects import StaticObject
-from .consants import GRAVITY
+from .constants import GRAVITY
 
 vec = pg.math.Vector2
 
@@ -55,8 +55,8 @@ class Player(UserObject):
         self.last_frame = 0
 
         # jump
-        self.jumping = False
-        self.gravity = -24
+        self.jumping = True
+        self.gravity = 0
 
         # Custom collider settings (still to be determined)
         # self.set_custom_collider([10, 10, 80, 80])

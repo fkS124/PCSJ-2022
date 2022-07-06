@@ -14,7 +14,8 @@ class LoadingThread(Thread):
                        "Objects": False,
                        "Map": False,
                        "Camera": False,
-                       "Background": False}
+                       "Background": False,
+                       "UI": False}
         self.exception = None
 
     def run(self) -> None:
@@ -29,7 +30,7 @@ class App:
         if not pg.get_init():
             pg.init()
 
-        self.screen = pg.display.set_mode((1400, 900), pg.SCALED, vsync=True)
+        self.screen = pg.display.set_mode((1400, 860), pg.SCALED, vsync=True)
         self.running = True
         self.game: Game | None = None
 
@@ -44,7 +45,7 @@ class App:
         self.dt = 0
 
     @staticmethod
-    def _quit():
+    def quit_():
         pg.quit()
         raise SystemExit
 
@@ -65,7 +66,11 @@ class App:
         thread = LoadingThread(self)
         thread.start()
 
-        font = pg.font.Font(None, 25)
+        title_font = pg.font.Font("assets/fonts/RedPixel.otf", 150)
+        title = title_font.render("Cubic Engine", True, (0, 255, 0))
+        title_rect = title.get_rect(center=(self.screen.get_width()//2, self.screen.get_height()//3))
+
+        font = pg.font.Font("assets/fonts/Consolas.ttf", 25)
         rect = pg.Rect(0, 0, self.screen.get_width() * 2 / 3, 50)
         rect.center = self.screen.get_width() // 2, self.screen.get_height() // 2
         last_sum = 0
@@ -76,10 +81,12 @@ class App:
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
-                    self._quit()
+                    self.quit_()
 
             self.screen.fill((0, 0, 0))
             n_dots = (pg.time.get_ticks() // 500 % 3) + 1
+
+            self.screen.blit(title, title_rect)
 
             pg.draw.rect(self.screen, (0, 255, 0), rect, 3)
             pg.draw.rect(self.screen, (0, 255, 0), [rect.topleft,
@@ -113,6 +120,7 @@ class App:
 
         if special_arg in self.special_args:
             self.special_args[special_arg]()
+            self.game.init_ui_menu()
 
         self.game.objects[0].do_binding()
 
@@ -120,7 +128,9 @@ class App:
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
-                    self._quit()
+                    self.quit_()
+
+                self.game.handle_events(event)
 
             self.game.routine()
             pg.display.set_caption(f"{self.clock.get_fps()}")

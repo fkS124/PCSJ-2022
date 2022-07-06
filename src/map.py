@@ -5,6 +5,16 @@ from random import choice, randint
 from .objects import StaticObject, vec, Object2d, DynamicObject
 
 
+def darker(color: tuple[int, ...] | pg.Color, degree: int) -> pg.Color:
+    new_color = [color[0] + degree, color[1] + degree, color[2] + degree]
+    for idx, col in enumerate(new_color):
+        if col > 255:
+            new_color[idx] = 255
+        elif col < 0:
+            new_color[idx] = 0
+    return pg.Color(new_color)
+
+
 class SpriteLoader:
 
     def __init__(self, app, tile_w, tile_h):
@@ -60,67 +70,6 @@ class SpriteLoader:
                 self.setup_color_animation(key)
 
 
-class DyingSprite(DynamicObject):
-    ABSOLUTE_DRAW = True
-
-    def __init__(self, app, death_pos, death_sprite):
-        super(DyingSprite, self).__init__(app, death_pos, death_sprite)
-
-        self.color = death_sprite.get_at((5, 0))
-
-        # DYING MANAGEMENT -----------------------------
-        self.dying = False
-        self.started_dying = pg.time.get_ticks()
-        self.dying_delay = 1000
-        self.n_crack_max = 5
-        self.n_cracks = 0
-        self.last_crack = 0
-        self.last_vel = vec(0, 0)
-        self.last_side = 0
-        self.crack_points = []
-        self.crack_vel = self.surface.get_width() // 10
-        self.gravity = 0
-
-        rect = pg.Rect(0, 0, *self.surface.get_size())
-        self.dep_pos = [rect.topleft, rect.bottomleft, rect.topright, rect.bottomright, rect.midtop, rect.midright,
-                        rect.midbottom, rect.midleft]
-        self.dep_vel = [(1, 1), (1, -1), (-1, 1), (-1, -1), (0, 1), (-1, 0), (0, -1), (1, 0)]
-
-    def update(self):
-        if pg.time.get_ticks() - self.started_dying > 200:
-            self.gravity += 1
-        self.vel.y += self.gravity
-
-        if pg.time.get_ticks() - self.started_dying > self.dying_delay:
-            return "kill"
-
-        return super(DyingSprite, self).update()
-    
-    def draw(self, display: pg.Surface, offset=vec(0, 0)) -> None:
-        self.surface.fill(self.color)
-
-        if pg.time.get_ticks() - self.last_crack > self.dying_delay / self.n_crack_max:
-            self.last_crack = pg.time.get_ticks()
-            self.n_cracks += 1
-            self.crack_points.append([choice(self.dep_pos)])
-            idx = self.dep_pos.index(self.crack_points[-1][0])
-            self.dep_pos.remove(self.crack_points[-1][0])
-            self.last_vel = vec(self.dep_vel[idx]) * self.crack_vel
-            self.dep_vel.remove(self.dep_vel[idx])
-            self.crack_points[-1].append(self.crack_points[-1][-1] + self.last_vel.rotate(randint(-10, 10)))
-            self.last_side = pg.time.get_ticks()
-
-        if pg.time.get_ticks() - self.last_side > self.dying_delay / self.n_crack_max / 6 and len(
-                self.crack_points) > 1:
-            self.last_side = pg.time.get_ticks()
-            self.crack_points[-1].append(self.crack_points[-1][-1] + self.last_vel.rotate(randint(-10, 10)))
-
-        for crack in self.crack_points:
-            pg.draw.lines(self.surface, (0, 0, 0) if self.color != (0, 0, 0) else (255, 255, 255), False, crack)
-            
-        return super(DyingSprite, self).draw(display, offset)
-
-
 class TileSprite(StaticObject):
 
     """
@@ -154,6 +103,10 @@ class TileSprite(StaticObject):
         elif tag in self.special_color_set:
             self.color, self.color1, self.color2 = self.special_color_set[tag]
             self.surface.fill(self.color)
+        elif tag == "beacon":
+            self.surface.fill(self.color)
+            self.color = color
+            self.pressed = False
         elif tag == "animated_color":
             if color_anim is not None:
                 self.surface.fill(self.sprite_loader.current_color_animations[color_anim])
@@ -167,19 +120,19 @@ class TileSprite(StaticObject):
 
     def kill(self):
         if not self.dying:
-            self.DONT_DRAW = True
             self.dying = True
             self.death_time = pg.time.get_ticks()
-            self.sprite_loader.app.game.add_object(
-                DyingSprite(self.sprite_loader.app, self.rect.topleft, self.surface.copy())
-            )
             
     def update(self) -> None | str:
         if self.tag == "animated_color":
             self.color = self.sprite_loader.current_color_animations[self.color_anim]
             self.surface.fill(self.color)
         elif self.tag == "beacon":
-            pass
+            if self.pressed:
+                new_color = darker(self.color, 80)
+                self.surface.fill(new_color := (new_color[0], new_color[1], 0))
+            else:
+                self.surface.fill(self.color)
 
         if self.dying:
             if pg.time.get_ticks() - self.death_time > 500:
@@ -192,26 +145,19 @@ class Map:
 
     g = 10
     s = 11
+    b = 12
 
-    menu_map = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+    menu_map = [[s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, b, g, g, g, b, g, g, g, b, g, g, g, g]]
 
     def __init__(self, app):
 
@@ -249,7 +195,9 @@ class Map:
             1: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "animated_color", self.sprite_loader,
                                               color_anim="white-red")),
             10: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "grass", self.sprite_loader)),
-            11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone", self.sprite_loader))
+            11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone", self.sprite_loader)),
+            12: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "beacon", self.sprite_loader,
+                                               color=pg.Color(150, 150, 0)))
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {
@@ -261,7 +209,7 @@ class Map:
 
     def generate_menu(self):
         self.menu = True
-        self.chunk_size = 19
+        self.chunk_size = 32
         return self.generate_new_chunk("menu")
 
     def quit_menu(self):

@@ -1,7 +1,21 @@
 import pygame as pg
+from typing import Callable
 from pygame.gfxdraw import aapolygon, filled_polygon
-from .objects import DynamicObject, StaticObject, Object2d, AutonomousObject, UserObject, vec, Player
-from .map import Map, DyingSprite
+from .objects import (
+    DynamicObject,
+    StaticObject,
+    Object2d,
+    AutonomousObject,
+    UserObject,
+    vec,
+    Player,
+    Text,
+    UiObject,
+    create_bg_text,
+    obj_type,
+    Title
+)
+from .map import Map, TileSprite
 
 
 def reversed_dir(direction: str | None):
@@ -48,7 +62,7 @@ class Game:
         # OBJECTS --------------------------
         self.objects: list[Object2d | Player] = [Player(app, (0, 0))]
         self.player = self.objects[0]
-        self.drawing_objects: list[Object2d | Player] = [self.player]
+        self.drawing_objects: list[obj_type] = [self.player]
         loading_thread.loaded["Objects"] = True
 
         # COLLISION ------------------------
@@ -57,7 +71,7 @@ class Game:
 
         # MAP ------------------------------
         self.map = Map(app)
-        self.player.rect.topleft = (240, 640)
+        self.player.rect.topleft = (530, 650)
         menu_objects = self.map.generate_menu()
         for menu_object in menu_objects:
             self.add_object(menu_object)
@@ -76,6 +90,8 @@ class Game:
         self.camera_looking_at: vec = vec(0, 0)
         self.cam_dxy: vec = vec(0, 0)
         self.camera_vel: float = 5.0
+        self.camera_fixed_y: None | int = None
+        self.camera_fixed_x: None | int = None
         loading_thread.loaded["Camera"] = True
 
         # BACKGROUND ------------------------
@@ -86,7 +102,30 @@ class Game:
         self.init_background("night")
         loading_thread.loaded["Background"] = True
 
+        # UI OBJECTS -------------------------
+        self.ui_objects: list[UiObject] = []
+        self.init_ui_menu()
+        self.beacons: dict[str, list[TileSprite, Title, bool]] = {}
+        self.beacons_funcs: dict[str, Callable] = {
+            "Play": self.start_game,
+            "Settings": self.start_settings,
+            "Quit": self._quit
+        }
+        loading_thread.loaded["UI"] = True
+
+    def start_game(self):
+        pass
+
+    def start_settings(self):
+        pass
+
+    def _quit(self):
+        self.app.quit_()
+
     def get_scroll(self) -> vec:
+        if self.game_mode == "menu":
+            self.camera_fixed_y = 440
+
         looking_point = vec(self.camera_following_object.center)
         if self.camera_fixed:
             self.camera_looking_at = looking_point
@@ -104,7 +143,46 @@ class Game:
             else:
                 self.cam_dxy = vec(0, 0)
 
+        if self.camera_fixed_x is not None:
+            self.camera_looking_at.x = self.camera_fixed_x
+        if self.camera_fixed_y is not None:
+            self.camera_looking_at.y = self.camera_fixed_y
+
         return -self.camera_looking_at + (1 / 2) * vec(self.screen.get_size())
+
+    def init_ui_menu(self):
+        fonts = {
+            "normal": pg.font.Font("assets/fonts/DISTRO__.ttf", 30),
+            "bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 35),
+            "title_bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 50)
+        }
+        texts = [[(250, 340), "Controls", "bold"],
+                 [(200, 400), f"Go left: {pg.key.name(self.player.KEYS['Left']).capitalize()}"],
+                 [(200, 440), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
+                 [(200, 480), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
+                 [(200, 520), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
+                 [(800, 440), "Go this way ->", "bold"]]
+        titles = [[(1520, 440), "Play", "title_bold"],
+                  [(1800, 440), "Settings", "title_bold"],
+                  [(2150, 440), "Quit", "title_bold"]]
+
+        self.beacons = {}
+        self.ui_objects = []
+        for data in texts:
+            if len(data) < 3:
+                font = fonts["normal"]
+            else:
+                font = fonts[data[-1]]
+            self.ui_objects.append(create_bg_text(data[0], font, data[1], pg.Color(255, 255, 255), shadow_=(2, 2)))
+        for pos, title, font_id in titles:
+            font = fonts[font_id]
+            self.ui_objects.append(Title(
+                pos, font, title, color=pg.Color(255, 255, 255), big_scale=1.5, scaling_delay=120, shadow_=(3, 3)
+            ))
+
+        tags = ["Play", "Settings", "Quit"]
+        all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
+        self.beacons = {dat[0]: [dat[1], self.ui_objects[6+idx], False] for idx, dat in enumerate(zip(tags, all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
         vel = moving_object.vel
@@ -117,6 +195,8 @@ class Game:
         for c_rect, collider in self.collision_rects:
             if collider.DONT_COLLIDE:
                 continue
+            if hasattr(collider, "tag") and collider.tag == "beacon":
+                collider.pressed = False
 
             inside_horizontal = n_rect.top < c_rect.bottom - 1 and n_rect.bottom > c_rect.top + 1
             inside_vertical = n_rect.left < c_rect.right and n_rect.right > c_rect.left
@@ -133,9 +213,11 @@ class Game:
                     moving_object.gravity = 0
                     moving_object.jumping = False
                     if self.game_mode == "destruct" and hasattr(collider, "kill"):
-                        if hasattr(collider, "unbreakable") and not collider.unbreakable and \
-                                not isinstance(moving_object, DyingSprite):
+                        if hasattr(collider, "unbreakable") and not collider.unbreakable:
                             collider.kill()
+                    elif self.game_mode == "menu":
+                        if hasattr(collider, "tag") and collider.tag == "beacon":
+                            collider.pressed = True
 
             elif vel.y < 0:
                 if abs(c_rect.bottom - n_rect.top) <= - vel.y and inside_vertical:
@@ -153,6 +235,12 @@ class Game:
         # handle events for every object in the game
         for object_ in self.objects:
             object_.handle_events(event)
+
+        if event.type == pg.KEYDOWN:
+            if event.key == 13:
+                for key, beacon in self.beacons.items():
+                    if beacon[0].pressed:
+                        self.beacons_funcs[key]()
 
     def draw_perspective(self):
         vanishing_point = vec(self.camera_looking_at)
@@ -212,14 +300,19 @@ class Game:
     def draw_background(self):
         self.screen.fill((111, 93, 231))
 
+        for ui_object in self.ui_objects:
+            if ui_object.IN_BACKGROUND:
+                ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
+
     def routine(self):
+        # print(self.player.rect.center)
         # update all the color animations (they're global, so that all the sprites have the same
         self.map.sprite_loader.calculate_color_animations()
 
         # update the scroll value (for camera)
         self.draw_background()
 
-        font = pg.font.Font(None, 40)
+        font = pg.font.Font("assets/fonts/Consolas.ttf", 40)
         self.scroll = self.get_scroll()
         self.texts = []
 
@@ -250,6 +343,13 @@ class Game:
                     self.add_object(obj)
             self.drawing_objects.extend(working_chunk[0])
 
+        if self.game_mode == "menu":
+            for key, beacon in self.beacons.items():
+                if (new_val := beacon[0].pressed) != beacon[2]:
+                    output = beacon[1].start_scaling() if new_val else beacon[1].start_descaling()
+                    if output:
+                        self.beacons[key][2] = new_val
+
         # update all objects
         to_remove = []
         for object_ in self.objects:
@@ -276,6 +376,10 @@ class Game:
         # draw all see able objects
         for object_ in self.drawing_objects:
             object_.draw(self.screen, self.scroll)
+
+        for ui_object in self.ui_objects:
+            if not ui_object.IN_BACKGROUND:
+                ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
 
         """ DEBUG -------------------------------------------
         for chunk in self.map.chunks:
