@@ -73,6 +73,7 @@ class Game:
         self.objects: list[Object2d | Player] = [Player(app, (0, 0))]
         self.player = self.objects[0]
         self.drawing_objects: list[obj_type] = [self.player]
+        self.static_frames: int = 0
         loading_thread.loaded["Objects"] = True
 
         # COLLISION ------------------------
@@ -133,6 +134,7 @@ class Game:
         self.reset_object_lists()
         self.map.quit_menu()
         self.map.init_game()
+        self.player.vel.x += 8
 
     def reset_object_lists(self):
         self.objects = [self.player]
@@ -162,10 +164,11 @@ class Game:
             looking_point = vec(self.camera_following_object.center)
             self.camera_free = False
         else:
-            self.camera_free = False
-            self.camera_fixed_y = 730
-            looking_point = vec(self.game_camera_looking_at, self.camera_fixed_y)
-            self.game_camera_looking_at += self.game_camera_scroll * self.app.dt * self.app.FPS
+            looking_point = vec(self.player.rect.center)+vec(100, 0)
+            if looking_point.y > 800:
+                looking_point.y = 800
+            self.camera_fixed_y = None
+            self.camera_fixed_x = None
 
         if self.camera_fixed:
             self.camera_looking_at = looking_point
@@ -297,9 +300,8 @@ class Game:
     def draw_perspective(self):
         vanishing_point = vec(self.camera_looking_at)
         length3d = 10
-        reference = self.player.rect.center if self.game_mode == "menu" else (self.game_camera_looking_at, self.camera_fixed_y)
+        reference = self.player.rect.center if self.game_mode == "menu" else self.camera_looking_at
 
-        pg.draw.circle(self.screen, (255, 0, 0), reference+self.scroll, 2)
         keys = {"menu": lambda x: (x.rect.y, vec(x.rect.center).distance_to(vec(reference))),
                 "normal": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
                 "default": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
@@ -370,7 +372,7 @@ class Game:
         self.go_back_to_menu()
 
     def routine(self):
-        # print(self.player.rect.center)
+        print(self.player.rect.center, self.player.vel.x)
         # update all the color animations (they're global, so that all the sprites have the same
         self.map.sprite_loader.calculate_color_animations()
 
@@ -382,14 +384,15 @@ class Game:
         self.texts = []
 
         if self.game_mode != "menu":
+            self.player.vel.x += 8
             # DO HERE ALL THE CHECKING OF GAME STATES
-            screen_rect = self.screen.get_rect(center=(self.game_camera_looking_at, self.camera_fixed_y))
-            screen_rect.topleft -= vec(300, 0)
-            screen_rect.size += vec(600, 0)
+            # screen_rect = self.screen.get_rect(center=(self.game_camera_looking_at, self.camera_fixed_y))
+            # screen_rect.topleft -= vec(300, 0)
+            # screen_rect.size += vec(600, 0)
 
-            if not self.player.rect.colliderect(screen_rect):
-                # PLAYER DIES -> go back to menu -> TODO: put a death screen
-                self.kill_player()
+            # if not self.player.rect.colliderect(screen_rect):
+            #     # PLAYER DIES -> go back to menu -> TODO: put a death screen
+            #     self.kill_player()
 
         # get collision rects for this frame
         self.collision_rects = [
@@ -404,7 +407,7 @@ class Game:
         if self.game_mode == "menu":
             current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
         else:
-            current_chunk = self.map.get_current_chunk(vec(self.game_camera_looking_at, self.camera_fixed_y))
+            current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
         translations = [(0, 0), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (-1, 1), (0, -1), (1, -1)]
         if self.map.menu:
             if current_chunk == (0, 0):
@@ -413,7 +416,7 @@ class Game:
             else:
                 translations = [(0, 0), (-1, 0), (1, 0)]
         elif self.map.horizontal_only:
-            translations = [(0, 0), (-1, 0), (1, 0)]
+            translations = [(0, 0), (1, 0), (-1, 0)]
         elif self.map.vertical_only:
             translations = [(0, 0), (0, -1), (0, 1)]
         for translation in translations:
@@ -467,6 +470,16 @@ class Game:
         for ui_object in self.ui_objects:
             if not ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
+
+        if self.player.static_x and not self.game_mode == "menu":
+            self.static_frames += 1
+        else:
+            self.static_frames = 0
+
+        if self.static_frames > 7 or self.player.rect.bottom > self.map.chunk_size.y * self.map.tile_size.y + 200:
+            # DEATH OF THE PLAYER
+            # TODO: a better transition
+            self.go_back_to_menu()
 
         """ DEBUG -------------------------------------------
         for chunk in self.map.chunks:

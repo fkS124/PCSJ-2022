@@ -198,6 +198,9 @@ class Map:
                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
                        [0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, s],
                        [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
+    dimensions = {
+        "normal": NormalDimension
+    }
 
     def __init__(self, app):
 
@@ -207,7 +210,7 @@ class Map:
         self.app = app
         self.tile_size = vec(80, 80)
         self.sprite_loader = SpriteLoader(app, self.tile_size.x, self.tile_size.y)
-        self.chunk_size = 15
+        self.chunk_size = vec(15, 11)
 
         self.translate = {
             # 3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "star", self.sprite_loader)),
@@ -228,8 +231,11 @@ class Map:
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {
-            (0, 0): copy(self.base_generation),
+            (0, 0): copy(self.dimensions["normal"].empty_preset),
             "menu": copy(self.menu_map)
+        }
+        self.presets: dict[tuple[int, int], str] = {
+            (0, 0): "empty_preset"
         }
         self.generated_chunks = {}
         self.menu = False
@@ -240,33 +246,39 @@ class Map:
     def generate_menu(self):
         self.chunks = {
             "menu": copy(self.menu_map),
-            (0, 0): copy(self.base_generation)
+            (0, 0): copy(self.dimensions["normal"].empty_preset)
+        }
+        self.presets: dict[tuple[int, int], str] = {
+            (0, 0): "empty_preset"
         }
         self.generated_chunks = {}
 
         self.menu = True
-        self.chunk_size = 32
+        self.chunk_size = vec(32, 11)
         return self.generate_new_chunk("menu")
 
     def quit_menu(self):
         self.chunks = {
             "menu": copy(self.menu_map),
-            (0, 0): copy(self.base_generation)
+            (0, 0): copy(self.dimensions["normal"].empty_preset)
+        }
+        self.presets: dict[tuple[int, int], str] = {
+            (0, 0): "empty_preset"
         }
         self.generated_chunks = {}
         self.menu = False
-        self.chunk_size = 15
+        self.chunk_size = vec(34, 15)
 
     def get_index_from_co(self, pos: vec):
-        chunk_id = floor(pos.x / (self.chunk_size * self.tile_size.x)), \
-                   floor(pos.y / (self.chunk_size * self.tile_size.y))
-        col = floor(((pos.x - chunk_id[0] * self.tile_size.x * self.chunk_size) / self.tile_size.x))
-        row = floor(((pos.y - chunk_id[1] * self.tile_size.y * self.chunk_size) / self.tile_size.y))
+        chunk_id = floor(pos.x / (self.chunk_size.x * self.tile_size.x)), \
+                   floor(pos.y / (self.chunk_size.y * self.tile_size.y))
+        col = floor(((pos.x - chunk_id[0] * self.tile_size.x * self.chunk_size.x) / self.tile_size.x))
+        row = floor(((pos.y - chunk_id[1] * self.tile_size.y * self.chunk_size.y) / self.tile_size.y))
         return row, col, chunk_id[0], chunk_id[1]
 
     def get_chunk(self, pos: vec):
-        return (floor(pos.x / (self.chunk_size * self.tile_size.x)),
-                floor(pos.y / (self.chunk_size * self.tile_size.y)))
+        return (floor(pos.x / (self.chunk_size.x * self.tile_size.x)),
+                floor(pos.y / (self.chunk_size.y * self.tile_size.y)))
 
     def init_game(self):
         # self.generate_new_chunk((0, 0))
@@ -284,28 +296,38 @@ class Map:
                 return self.menu_map[row][col] not in self.ignore_neighbour
             else:
                 return False if row != len(self.menu_map)-1 else True
+        else:
+            if (chunk_id_x, chunk_id_y) not in self.chunks:
+                return False
 
         if row == 0 and direction == "top":
+            if self.horizontal_only:
+                return False
             if (new_id := (chunk_id_x, chunk_id_y - 1)) in self.chunks:
-                return self.chunks[new_id][self.chunk_size-1][col]  not in self.ignore_neighbour
-        elif row == self.chunk_size - 1 and direction == "bottom":
+                return self.chunks[new_id][int(self.chunk_size.y-1)][col] not in self.ignore_neighbour
+        elif row == self.chunk_size.y - 1 and direction == "bottom":
+            if self.horizontal_only:
+                return False
             if (new_id := (chunk_id_x, chunk_id_y + 1)) in self.chunks:
                 return self.chunks[new_id][0][col] not in self.ignore_neighbour
         elif col == 0 and direction == "left":
+            if self.vertical_only:
+                return False
             if (new_id := (chunk_id_x - 1, chunk_id_y)) in self.chunks:
-                return self.chunks[new_id][row][self.chunk_size - 1]  not in self.ignore_neighbour
-        elif col == self.chunk_size - 1 and direction == "right":
+                return self.chunks[new_id][row][int(self.chunk_size.x - 1)] not in self.ignore_neighbour
+        elif col == self.chunk_size.x - 1 and direction == "right":
+            if self.vertical_only:
+                return False
             if (new_id := (chunk_id_x + 1, chunk_id_y)) in self.chunks:
-                print(row, len(self.chunks[new_id]))
                 return self.chunks[new_id][row][0]  not in self.ignore_neighbour
 
-        if 0 < row + translate[direction][0] < self.chunk_size and 0 < col + translate[direction][1] < self.chunk_size:
+        if 0 < row + translate[direction][0] < self.chunk_size.y and 0 < col + translate[direction][1] < self.chunk_size.x:
             row += translate[direction][0]
             col += translate[direction][1]
             return self.chunks[(chunk_id_x, chunk_id_y)][row][col] not in self.ignore_neighbour
 
     def translate_chunk(self, id_: tuple[int, int], special_key: str = None) -> list[Object2d]:
-        chunk_w, chunk_h = self.chunk_size * self.tile_size.x, self.chunk_size * self.tile_size.y
+        chunk_w, chunk_h = self.chunk_size.x * self.tile_size.x, self.chunk_size.y * self.tile_size.y
         translated = []
         matrix = self.chunks[id_]
         if special_key == "menu":
@@ -321,8 +343,8 @@ class Map:
         return translated
 
     def get_current_chunk(self, pos: vec):
-        return (floor(pos.x / (self.chunk_size * self.tile_size.x)),
-                floor(pos.y / (self.chunk_size * self.tile_size.y)))
+        return (floor(pos.x / (self.chunk_size.x * self.tile_size.x)),
+                floor(pos.y / (self.chunk_size.y * self.tile_size.y)))
 
     def get_current_chunk_objects(self, chunk_id_x: int, chunk_id_y: int) -> (list[Object2d], bool):
         if self.menu and chunk_id_x == 0 and chunk_id_y == 0:
@@ -334,15 +356,25 @@ class Map:
             return self.generate_new_chunk(id_), True
 
     def generate_new_chunk(self, id_) -> list[Object2d]:
+
         if id_ == "menu":
             output = self.translate_chunk(id_, special_key="menu")
         else:
+            if self.horizontal_only and id_[1] != 0:
+                return []
+            elif self.vertical_only and id_[0] != 0:
+                return []
+
             if id_ not in self.chunks:
                 if self.menu:
                     self.chunks[id_] = copy(self.menu_map_gen)
                 else:
-                    # TODO: add a generation algorithm
-                    self.chunks[id_] = copy(self.base_generation)
+                    dimension = self.dimensions[self.app.game.game_mode]
+                    if self.horizontal_only:
+                        last_preset = self.presets.get((id_[0]-1, id_[1]))
+                        chosen_preset = choice(dimension.following[last_preset])
+                        self.chunks[id_] = getattr(dimension, chosen_preset)
+                        self.presets[id_] = chosen_preset
             output = self.translate_chunk(id_)
         self.generated_chunks[id_] = output
         return output
