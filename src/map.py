@@ -111,15 +111,12 @@ class TileSprite(StaticObject):
             self.button_rect = pg.Rect(self.rect.x, self.rect.y - 50, self.rect.w, 50)
         elif tag == "spike":
             self.DONT_COLLIDE = True
-            self.DONT_DRAW_PERSPECTIVE = True
             self.surface = pg.Surface(size, pg.SRCALPHA)
-            self.surface.fill((0, 0, 0, 0))
-            pg.draw.polygon(self.surface, (0, 0, 0), [(0, self.surface.get_height()-20),
-                                                      (self.surface.get_width()/2, 0),
-                                                      (self.surface.get_width()/2, self.surface.get_height())])
-            pg.draw.polygon(self.surface, (50, 50, 50), [(self.surface.get_width(), self.surface.get_height() - 20),
-                                                         (self.surface.get_width() / 2, 0),
-                                                         (self.surface.get_width() / 2, self.surface.get_height())])
+            self.color = (255, 0, 0)
+            pg.draw.polygon(self.surface, self.color, ((0, self.surface.get_height()),
+                                                       (self.surface.get_width(), self.surface.get_height()),
+                                                       (
+                                                       self.surface.get_width() / 2, self.surface.get_height() * 0.13)))
         elif tag == "animated_color":
             if color_anim is not None:
                 self.surface.fill(self.sprite_loader.current_color_animations[color_anim])
@@ -130,6 +127,8 @@ class TileSprite(StaticObject):
 
         self.dying = False
         self.death_time = 0
+
+        self.mask = pg.mask.from_surface(self.surface)
 
     def kill(self):
         if not self.dying:
@@ -240,8 +239,13 @@ class Map:
         self.generated_chunks = {}
         self.menu = False
 
-    def collide_spike_player(self, player, spike: TileSprite):
-        return False
+    @staticmethod
+    def collide_spike_player(player, spike: TileSprite):
+        x_offset = spike.rect.x - player.rect.x
+        y_offset = spike.rect.y - player.rect.y
+        pl_mask = player.mask
+        sp_mask = spike.mask
+        return pl_mask.overlap(sp_mask, (x_offset, y_offset)) is not None
 
     def generate_menu(self):
         self.chunks = {

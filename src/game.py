@@ -13,7 +13,8 @@ from .objects import (
     UiObject,
     create_bg_text,
     obj_type,
-    Title
+    Title,
+    Particle
 )
 from .map import Map, TileSprite
 
@@ -131,6 +132,7 @@ class Game:
         self.player.rect.topleft = (400, 400)
         self.game_camera_looking_at = self.player.rect.centerx
         self.game_mode = "normal"
+        self.player.direction = "right"
         self.reset_object_lists()
         self.map.quit_menu()
         self.map.init_game()
@@ -315,48 +317,93 @@ class Game:
                     or object_.DONT_DRAW_PERSPECTIVE:
                 continue
 
-            pos = vec(object_.rect.topleft) + self.scroll
-            w, h = object_.rect.w, object_.rect.h
-            color = object_.surface.get_at((5, 0))
+            if hasattr(object_, "tag") and object_.tag == "spike":
+                pos_left = object_.rect.topleft + vec(0, object_.surface.get_height()) + self.scroll
+                pos_right = object_.rect.topleft + vec(object_.surface.get_width(),
+                                                       object_.surface.get_height()) + self.scroll
+                pos_top = object_.rect.topleft + vec(object_.surface.get_width() / 2,
+                                                     object_.surface.get_height() * 0.13) + self.scroll
+                color = object_.color
 
-            vector = vanishing_point - pos + self.scroll
-            cond = vector[0] > w/2, vector[1] > h/2
-            way = ['bottom' if cond[1] else 'top', 'right' if cond[0] else 'left']
+                vector_left = (vanishing_point - pos_left + self.scroll) / length3d
+                vector_right = (vanishing_point - pos_right + self.scroll) / length3d
+                vector_top = (vanishing_point - pos_top + self.scroll) / length3d
+                vectors = [vector_left, vector_right, vector_top]
 
-            vector -= vec(w * cond[0], h * cond[1])
-            pos += vec(w * cond[0], h * cond[1])
+                if vector_left[0] > 0 > vector_left[1] and -1.7 < vector_left[1] / vector_left[0] < 0:
+                    polygon(self.screen, change(color, 0.8),
+                            (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
+                    continue
+                if vector_right[0] < 0 < vector_right[1] / vector_right[0] < 1.7 and vector_left[1] < 0:
+                    polygon(self.screen, change(color, 0.5),
+                            (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
+                    continue
 
-            vectors = {'left': vec(vector - vec(w, 0)) / length3d,
-                       'right': vec(vector + vec(w, 0)) / length3d,
-                       'top': vec(vector - vec(0, h)) / length3d,
-                       'bottom': vec(vector + vec(0, h)) / length3d}
+                if vector_top[1] > 0 and (
+                    vector_top[1] / vector_top[0] > 1.7 if vector_top[0] > 0 else vector_top[1] / vector_top[0] < -1.7):
+                    polygon(self.screen, change(color, 0.75),
+                            (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    continue
 
-            vector /= length3d
+                vectors = sorted(vectors, key=lambda x: x[0] ** 2 + x[1] ** 2)
 
-            point = {'left': vec(w, 0),
-                     'right': -vec(w, 0),
-                     'top': vec(0, h),
-                     'bottom': -vec(0, h)}
+                if vectors[0] == vector_left:
+                    polygon(self.screen, change(color, 0.75),
+                            (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    polygon(self.screen, change(color, 0.5),
+                            (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
+                elif vectors[0] == vector_right:
+                    polygon(self.screen, change(color, 0.75),
+                            (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    polygon(self.screen, change(color, 0.8),
+                            (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
+                else:
+                    polygon(self.screen, change(color, 0.8),
+                            (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
+                    polygon(self.screen, change(color, 0.5),
+                            (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
+            else:
+                pos = vec(object_.rect.topleft) + self.scroll
+                w, h = object_.rect.w, object_.rect.h
+                color = object_.surface.get_at((5, 0))
 
-            colors = {
-                'left': object_.get_color('left'),
-                'right': object_.get_color('right'),
-                'top': object_.get_color('top'),
-                'bottom': object_.get_color('bottom')}
+                vector = vanishing_point - pos + self.scroll
+                cond = vector[0] > w/2, vector[1] > h/2
+                way = ['bottom' if cond[1] else 'top', 'right' if cond[0] else 'left']
 
-            conditions = {'left': vector[0] < 0,
-                          'right': vector[0] > 0,
-                          'top': vector[1] < 0,
-                          'bottom': vector[1] > 0}
+                vector -= vec(w * cond[0], h * cond[1])
+                pos += vec(w * cond[0], h * cond[1])
 
-            for i in range(0, 2):
-                if (not self.map.has_neighbour(way[i], object_) or object_ == self.player) and conditions[way[i]]:
-                    polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i+1]],
-                            pos + point[way[-i+1]] + vectors[way[-i+1]], pos + vector))
+                vectors = {'left': vec(vector - vec(w, 0)) / length3d,
+                           'right': vec(vector + vec(w, 0)) / length3d,
+                           'top': vec(vector - vec(0, h)) / length3d,
+                           'bottom': vec(vector + vec(0, h)) / length3d}
+
+                vector /= length3d
+
+                point = {'left': vec(w, 0),
+                         'right': -vec(w, 0),
+                         'top': vec(0, h),
+                         'bottom': -vec(0, h)}
+
+                colors = {
+                    'left': object_.get_color('left'),
+                    'right': object_.get_color('right'),
+                    'top': object_.get_color('top'),
+                    'bottom': object_.get_color('bottom')}
+
+                conditions = {'left': vector[0] < 0,
+                              'right': vector[0] > 0,
+                              'top': vector[1] < 0,
+                              'bottom': vector[1] > 0}
+
+                for i in range(0, 2):
+                    if (not self.map.has_neighbour(way[i], object_) or object_ == self.player) and conditions[way[i]]:
+                        polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i+1]],
+                                pos + point[way[-i+1]] + vectors[way[-i+1]], pos + vector))
 
     def init_background(self, theme: str):
         pass
-        print(self.screen)
         if theme == "night":
             star = scale(load("assets/sprites/only_star_1.png"), 0.1)
             moon = scale(load("assets/sprites/only_moon_1.png"), 0.1)
@@ -372,7 +419,7 @@ class Game:
         self.go_back_to_menu()
 
     def routine(self):
-        print(self.player.rect.center, self.player.vel.x)
+        # print(self.player.rect.center, self.player.vel.x)
         # update all the color animations (they're global, so that all the sprites have the same
         self.map.sprite_loader.calculate_color_animations()
 
@@ -429,7 +476,6 @@ class Game:
 
         if self.game_mode == "menu":
             for key, beacon in self.beacons.items():
-                print(beacon)
                 beacon[0].pressed = self.player.rect.colliderect(beacon[0].button_rect)
                 if (new_val := beacon[0].pressed) != beacon[2]:
                     output = beacon[1].start_scaling() if new_val else beacon[1].start_descaling()
@@ -475,6 +521,15 @@ class Game:
             self.static_frames += 1
         else:
             self.static_frames = 0
+
+        # if self.player.static_y and not self.player.static_x:
+        #     self.add_object(
+        #         Particle(self.app,
+        #                  self.player.rect.bottomleft if self.player.direction == "right"
+        #                  else self.player.rect.bottomright, (10, 10), pg.Color(255, 255, 255),
+        #                  vec(-20, -80) if self.player.direction == "right"
+        #                  else vec(20, -50), 500)
+        #     )
 
         if self.static_frames > 7 or self.player.rect.bottom > self.map.chunk_size.y * self.map.tile_size.y + 200:
             # DEATH OF THE PLAYER

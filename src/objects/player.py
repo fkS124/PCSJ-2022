@@ -65,6 +65,8 @@ class Player(UserObject):
         self.rect = self.surface.get_rect(center=self.rect.center)
         self.player_color = (255, 205, 60)
 
+        self.mask = pg.mask.from_surface(self.surface)
+
     def do_binding(self):
         self.bind(event="key-pressed", func=self.move, args="left", key=self.KEYS["Left"])
         self.bind(event="key-pressed", func=self.move, args="right", key=self.KEYS["Right"])
