@@ -93,6 +93,7 @@ class Game:
 
         # CAMERA ---------------------------
         self.scroll = vec(0, 0)
+        self.camera_free = False
         self.camera_limits: pg.Rect | None = None
         self.camera_fixed = False
         self.camera_following = True
@@ -159,7 +160,9 @@ class Game:
         if self.game_mode == "menu":
             self.camera_fixed_y = 440
             looking_point = vec(self.camera_following_object.center)
+            self.camera_free = False
         else:
+            self.camera_free = False
             self.camera_fixed_y = 730
             looking_point = vec(self.game_camera_looking_at, self.camera_fixed_y)
             self.game_camera_looking_at += self.game_camera_scroll * self.app.dt * self.app.FPS
@@ -198,7 +201,11 @@ class Game:
                  [(200, 440), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
                  [(200, 480), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
                  [(200, 520), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
-                 [(800, 440), "Go this way ->", "bold"]]
+                 [(800, 440), "Go this way ->", "bold"],
+                 [(-12200, 340), "Looking for the easter egg huh ?", "bold"],
+                 [(-20000, 340), "Really determined aren't you ?", "bold"],
+                 [(-28000, 340), "Your determination will pay off...", "bold"]]
+        # TODO: place the easter egg around x=-35000
         titles = [[(1520, 440), "Play", "title_bold"],
                   [(1800, 440), "Settings", "title_bold"],
                   [(2150, 440), "Quit", "title_bold"]]
@@ -219,7 +226,7 @@ class Game:
 
         tags = ["Play", "Settings", "Quit"]
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
-        self.beacons = {dat[0]: [dat[1], self.ui_objects[6+idx], False] for idx, dat in enumerate(zip(tags, all_beacons))}
+        self.beacons = {dat[0]: [dat[1], self.ui_objects[9+idx], False] for idx, dat in enumerate(zip(tags, all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
         vel = moving_object.vel
@@ -292,8 +299,14 @@ class Game:
         length3d = 10
         reference = self.player.rect.center if self.game_mode == "menu" else (self.game_camera_looking_at, self.camera_fixed_y)
 
+        pg.draw.circle(self.screen, (255, 0, 0), reference+self.scroll, 2)
+        keys = {"menu": lambda x: (x.rect.y, vec(x.rect.center).distance_to(vec(reference))),
+                "normal": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
+                "default": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
+                }
+
         for object_ in sorted(self.drawing_objects,
-                              key=lambda x: (vec(x.rect.center).distance_to(vec(reference))),
+                              key=(keys[self.game_mode] if self.game_mode in keys else keys["default"]),
                               reverse=True):
             if not pg.Rect(object_.rect.topleft + self.scroll, object_.rect.size).colliderect(
                     pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)) \
@@ -413,6 +426,7 @@ class Game:
 
         if self.game_mode == "menu":
             for key, beacon in self.beacons.items():
+                print(beacon)
                 beacon[0].pressed = self.player.rect.colliderect(beacon[0].button_rect)
                 if (new_val := beacon[0].pressed) != beacon[2]:
                     output = beacon[1].start_scaling() if new_val else beacon[1].start_descaling()
