@@ -102,6 +102,8 @@ class Game:
         self.camera_vel: float = 5.0
         self.camera_fixed_y: None | int = None
         self.camera_fixed_x: None | int = None
+        self.game_camera_looking_at = 0
+        self.game_camera_scroll: float = 3
         loading_thread.loaded["Camera"] = True
 
         # BACKGROUND ------------------------
@@ -124,12 +126,28 @@ class Game:
         loading_thread.loaded["UI"] = True
 
     def start_game(self):
-        self.player.rect.topleft = (10, 10)
+        self.player.rect.topleft = (400, 400)
+        self.game_camera_looking_at = self.player.rect.centerx
         self.game_mode = "normal"
+        self.reset_object_lists()
         self.map.quit_menu()
         self.map.init_game()
+
+    def reset_object_lists(self):
         self.objects = [self.player]
+        self.collider_objects = []
         self.ui_objects = []
+        self.drawing_objects = []
+        self.collision_rects = []
+
+    def go_back_to_menu(self):
+        self.reset_object_lists()
+        menu_objects = self.map.generate_menu()
+        for menu_object in menu_objects:
+            self.add_object(menu_object)
+        self.init_ui_menu()
+        self.game_mode = "menu"
+        self.player.rect.center = (530, 650)
 
     def start_settings(self):
         pass
@@ -140,8 +158,12 @@ class Game:
     def get_scroll(self) -> vec:
         if self.game_mode == "menu":
             self.camera_fixed_y = 440
+            looking_point = vec(self.camera_following_object.center)
+        else:
+            self.camera_fixed_y = 730
+            looking_point = vec(self.game_camera_looking_at, self.camera_fixed_y)
+            self.game_camera_looking_at += self.game_camera_scroll * self.app.dt * self.app.FPS
 
-        looking_point = vec(self.camera_following_object.center)
         if self.camera_fixed:
             self.camera_looking_at = looking_point
         elif self.camera_following:
@@ -210,8 +232,6 @@ class Game:
         for c_rect, collider in self.collision_rects:
             if collider.DONT_COLLIDE:
                 continue
-            if hasattr(collider, "tag") and collider.tag == "beacon":
-                collider.pressed = False
             if not (n_rect.top < c_rect.bottom - 1 and n_rect.bottom > c_rect.top + 1):
                 continue
             if vel.x > 0:
@@ -228,6 +248,8 @@ class Game:
         vel = moving_object.vel
         n_rect = rect.move(vel)
         for c_rect, collider in self.collision_rects:
+            if collider.DONT_COLLIDE:
+                continue
             if not (n_rect.left < c_rect.right and n_rect.right > c_rect.left):
                 continue
             if vel.y >= 0:
@@ -238,9 +260,6 @@ class Game:
                     if self.game_mode == "destruct" and hasattr(collider, "kill"):
                         if hasattr(collider, "unbreakable") and not collider.unbreakable:
                             collider.kill()
-                    elif self.game_mode == "menu":
-                        if hasattr(collider, "tag") and collider.tag == "beacon":
-                            collider.pressed = True
                     break
             elif vel.y < 0:
                 if abs(c_rect.bottom - n_rect.top) <= - vel.y:
@@ -265,16 +284,20 @@ class Game:
                 for key, beacon in self.beacons.items():
                     if beacon[0].pressed:
                         self.beacons_funcs[key]()
+            elif event.key == pg.K_ESCAPE:
+                self.go_back_to_menu()
 
     def draw_perspective(self):
         vanishing_point = vec(self.camera_looking_at)
         length3d = 10
+        reference = self.player.rect.center if self.game_mode == "menu" else (self.game_camera_looking_at, self.camera_fixed_y)
 
         for object_ in sorted(self.drawing_objects,
-                              key=lambda x: vec(x.rect.center).distance_to(self.camera_following_object.center),
+                              key=lambda x: (vec(x.rect.center).distance_to(vec(reference))),
                               reverse=True):
             if not pg.Rect(object_.rect.topleft + self.scroll, object_.rect.size).colliderect(
-                    pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)):
+                    pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)) \
+                    or object_.DONT_DRAW_PERSPECTIVE:
                 continue
 
             pos = vec(object_.rect.topleft) + self.scroll
@@ -330,6 +353,9 @@ class Game:
             if ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
 
+    def kill_player(self):
+        self.go_back_to_menu()
+
     def routine(self):
         # print(self.player.rect.center)
         # update all the color animations (they're global, so that all the sprites have the same
@@ -342,6 +368,16 @@ class Game:
         self.scroll = self.get_scroll()
         self.texts = []
 
+        if self.game_mode != "menu":
+            # DO HERE ALL THE CHECKING OF GAME STATES
+            screen_rect = self.screen.get_rect(center=(self.game_camera_looking_at, self.camera_fixed_y))
+            screen_rect.topleft -= vec(300, 0)
+            screen_rect.size += vec(600, 0)
+
+            if not self.player.rect.colliderect(screen_rect):
+                # PLAYER DIES -> go back to menu -> TODO: put a death screen
+                self.kill_player()
+
         # get collision rects for this frame
         self.collision_rects = [
             (pg.Rect(
@@ -352,7 +388,10 @@ class Game:
             self.collider_objects]
 
         self.drawing_objects = [self.player]
-        current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
+        if self.game_mode == "menu":
+            current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
+        else:
+            current_chunk = self.map.get_current_chunk(vec(self.game_camera_looking_at, self.camera_fixed_y))
         translations = [(0, 0), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (-1, 1), (0, -1), (1, -1)]
         if self.map.menu:
             if current_chunk == (0, 0):
@@ -374,6 +413,7 @@ class Game:
 
         if self.game_mode == "menu":
             for key, beacon in self.beacons.items():
+                beacon[0].pressed = self.player.rect.colliderect(beacon[0].button_rect)
                 if (new_val := beacon[0].pressed) != beacon[2]:
                     output = beacon[1].start_scaling() if new_val else beacon[1].start_descaling()
                     if output:
@@ -383,6 +423,10 @@ class Game:
         to_remove = []
         for object_ in self.objects:
             upd = object_.update()
+            if hasattr(object_, "tag") and object_.tag == "spike":
+                if self.map.collide_spike_player(self.player, object_):
+                    self.kill_player()
+
             if upd == "kill":
                 to_remove.append((object_, self.map.get_chunk(vec(object_.rect.center))))
             elif object_.ABSOLUTE_DRAW:  # draw the objects that are not included in the map

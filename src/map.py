@@ -107,6 +107,18 @@ class TileSprite(StaticObject):
             self.surface.fill(self.color)
             self.color = color
             self.pressed = False
+            self.button_rect = pg.Rect(self.rect.x, self.rect.y - 50, self.rect.w, 50)
+        elif tag == "spike":
+            self.DONT_COLLIDE = True
+            self.DONT_DRAW_PERSPECTIVE = True
+            self.surface = pg.Surface(size, pg.SRCALPHA)
+            self.surface.fill((0, 0, 0, 0))
+            pg.draw.polygon(self.surface, (0, 0, 0), [(0, self.surface.get_height()-20),
+                                                      (self.surface.get_width()/2, 0),
+                                                      (self.surface.get_width()/2, self.surface.get_height())])
+            pg.draw.polygon(self.surface, (50, 50, 50), [(self.surface.get_width(), self.surface.get_height() - 20),
+                                                         (self.surface.get_width() / 2, 0),
+                                                         (self.surface.get_width() / 2, self.surface.get_height())])
         elif tag == "animated_color":
             if color_anim is not None:
                 self.surface.fill(self.sprite_loader.current_color_animations[color_anim])
@@ -143,6 +155,7 @@ class TileSprite(StaticObject):
 
 class Map:
 
+    ignore_neighbour = [0, 4]
     g = 10
     s = 11
     b = 12
@@ -169,36 +182,38 @@ class Map:
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
+    base_generation = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
+                       [0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, s],
+                       [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
 
     def __init__(self, app):
 
         self.screen = app.screen
-        self.horizontal_only = False
-        self.vertical_only = True
+        self.horizontal_only = True
+        self.vertical_only = False
         self.app = app
         self.tile_size = vec(80, 80)
         self.sprite_loader = SpriteLoader(app, self.tile_size.x, self.tile_size.y)
         self.chunk_size = 15
-        self.grid = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]]
 
         self.translate = {
             # 3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "star", self.sprite_loader)),
             # 2: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon", self.sprite_loader)),
             # 1: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color", self.sprite_loader)),
+            4: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "spike", self.sprite_loader,
+                                              unbreakable=True)),
             3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color", self.sprite_loader,
                                               unbreakable=True)),
             2: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "animated_color", self.sprite_loader,
@@ -212,18 +227,31 @@ class Map:
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {
-            (0, 0): copy(self.grid),
+            (0, 0): copy(self.base_generation),
             "menu": copy(self.menu_map)
         }
         self.generated_chunks = {}
         self.menu = False
 
+    def collide_spike_player(self, player, spike: TileSprite):
+        return False
+
     def generate_menu(self):
+        self.chunks = {
+            "menu": copy(self.menu_map),
+            (0, 0): copy(self.base_generation)
+        }
+        self.generated_chunks = {}
+
         self.menu = True
         self.chunk_size = 32
         return self.generate_new_chunk("menu")
 
     def quit_menu(self):
+        self.chunks = {
+            "menu": copy(self.menu_map),
+            (0, 0): copy(self.base_generation)
+        }
         self.generated_chunks = {}
         self.menu = False
         self.chunk_size = 15
@@ -240,39 +268,40 @@ class Map:
                 floor(pos.y / (self.chunk_size * self.tile_size.y)))
 
     def init_game(self):
-        self.generate_new_chunk((0, 0))
+        # self.generate_new_chunk((0, 0))
+        pass
 
     def has_neighbour(self, direction: str, obj):
+
         translate = {'left': (0, -1), 'right': (0, 1), 'top': (-1, 0), 'bottom': (1, 0)}
         row, col, chunk_id_x, chunk_id_y = self.get_index_from_co(vec(obj.rect.topleft))
-
-        print(row, col, chunk_id_x, chunk_id_y)
 
         if self.menu:
             row += translate[direction][0]
             col += translate[direction][1]
             if 0 <= row < len(self.menu_map) and 0 <= col < len(self.menu_map[1]):
-                return self.menu_map[row][col] != 0
+                return self.menu_map[row][col] not in self.ignore_neighbour
             else:
                 return False if row != len(self.menu_map)-1 else True
 
-        if 0 <= row + translate[direction][0] < self.chunk_size and 0 <= col + translate[direction][1] < self.chunk_size:
-            row += translate[direction][0]
-            col += translate[direction][1]
-            return self.chunks[(chunk_id_x, chunk_id_y)][row][col] != 0
-
         if row == 0 and direction == "top":
             if (new_id := (chunk_id_x, chunk_id_y - 1)) in self.chunks:
-                return self.chunks[new_id][self.chunk_size-1][col] != 0
+                return self.chunks[new_id][self.chunk_size-1][col]  not in self.ignore_neighbour
         elif row == self.chunk_size - 1 and direction == "bottom":
             if (new_id := (chunk_id_x, chunk_id_y + 1)) in self.chunks:
-                return self.chunks[new_id][0][col] != 0
+                return self.chunks[new_id][0][col] not in self.ignore_neighbour
         elif col == 0 and direction == "left":
             if (new_id := (chunk_id_x - 1, chunk_id_y)) in self.chunks:
-                return self.chunks[new_id][row][self.chunk_size - 1] != 0
+                return self.chunks[new_id][row][self.chunk_size - 1]  not in self.ignore_neighbour
         elif col == self.chunk_size - 1 and direction == "right":
             if (new_id := (chunk_id_x + 1, chunk_id_y)) in self.chunks:
-                return self.chunks[new_id][row][0] != 0
+                print(row, len(self.chunks[new_id]))
+                return self.chunks[new_id][row][0]  not in self.ignore_neighbour
+
+        if 0 < row + translate[direction][0] < self.chunk_size and 0 < col + translate[direction][1] < self.chunk_size:
+            row += translate[direction][0]
+            col += translate[direction][1]
+            return self.chunks[(chunk_id_x, chunk_id_y)][row][col] not in self.ignore_neighbour
 
     def translate_chunk(self, id_: tuple[int, int], special_key: str = None) -> list[Object2d]:
         chunk_w, chunk_h = self.chunk_size * self.tile_size.x, self.chunk_size * self.tile_size.y
@@ -312,7 +341,7 @@ class Map:
                     self.chunks[id_] = copy(self.menu_map_gen)
                 else:
                     # TODO: add a generation algorithm
-                    self.chunks[id_] = copy(self.grid)
+                    self.chunks[id_] = copy(self.base_generation)
             output = self.translate_chunk(id_)
         self.generated_chunks[id_] = output
         return output
