@@ -110,11 +110,10 @@ class Game:
         loading_thread.loaded["Camera"] = True
 
         # BACKGROUND ------------------------
-        self.all_bg_sprites = []
-        self.all_bg_rects = []
-        self.rotations = []
-        self.types = []
-        self.init_background("night")
+        self.layers = [
+            [], [], []
+        ]
+        self.init_background("normal")
         loading_thread.loaded["Background"] = True
 
         # UI OBJECTS -------------------------
@@ -403,10 +402,8 @@ class Game:
                                 pos + point[way[-i+1]] + vectors[way[-i+1]], pos + vector))
 
     def init_background(self, theme: str):
-        pass
-        if theme == "night":
-            star = scale(load("assets/sprites/only_star_1.png"), 0.1)
-            moon = scale(load("assets/sprites/only_moon_1.png"), 0.1)
+        if theme == "normal":
+            pass
 
     def draw_background(self):
         self.screen.fill((111, 93, 231))
@@ -414,6 +411,9 @@ class Game:
         for ui_object in self.ui_objects:
             if ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
+
+        if self.game_mode == "normal":
+            pass
 
     def kill_player(self):
         self.go_back_to_menu()
