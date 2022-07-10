@@ -1,9 +1,9 @@
 import pygame as pg
 from copy import copy
 from math import floor
-from random import choice, randint
+from random import choice
 from .dimensions import NormalDimension
-from .objects import StaticObject, vec, Object2d, DynamicObject
+from .objects import StaticObject, vec, Object2d, Monster, Canon
 
 
 def darker(color: tuple[int, ...] | pg.Color, degree: int) -> pg.Color:
@@ -26,16 +26,6 @@ class SpriteLoader:
             "star": self.resize(tile_w, tile_h, self.load("assets/sprites/star_1.png"))
         }
 
-        self.color_animations = {
-            "green-magenta": {"color1": (0, 255, 0), "color2": (255, 0, 255), "delay": 1250},
-            "white-red": {"color1": (150, 0, 0), "color2": (255, 0, 0), "delay": 500},
-        }
-        self.current_color_animations = {}
-        self.last_count = 0
-
-        for key, animation in self.color_animations.items():
-            self.setup_color_animation(key)
-
     @staticmethod
     def resize(w, h, img: pg.Surface):
         return pg.transform.smoothscale(img, (w, h))
@@ -43,32 +33,6 @@ class SpriteLoader:
     @staticmethod
     def load(path: str):
         return pg.image.load(path).convert()
-
-    @staticmethod
-    def calc_color(animation, advance) -> pg.Color:
-        return pg.Color(
-            floor(animation["color1"][0] + advance * animation["dr"] / animation["delay"]),
-            floor(animation["color1"][1] + advance * animation["dg"] / animation["delay"]),
-            floor(animation["color1"][2] + advance * animation["db"] / animation["delay"]),
-        )
-
-    def setup_color_animation(self, key):
-        color_a = self.color_animations[key]
-        self.current_color_animations[key] = color_a["color1"]
-        self.color_animations[key]["dr"] = color_a["color2"][0] - color_a["color1"][0]
-        self.color_animations[key]["dg"] = color_a["color2"][1] - color_a["color1"][1]
-        self.color_animations[key]["db"] = color_a["color2"][2] - color_a["color1"][2]
-
-    def calculate_color_animations(self):
-        for key, animation in self.color_animations.items():
-            advance = pg.time.get_ticks() % animation["delay"]
-            self.current_color_animations[key] = self.calc_color(animation, advance)
-            if pg.time.get_ticks() // animation["delay"] > self.last_count:
-                self.last_count += 1
-                color2 = self.color_animations[key]["color2"]
-                self.color_animations[key]["color2"] = self.color_animations[key]["color1"]
-                self.color_animations[key]["color1"] = color2
-                self.setup_color_animation(key)
 
 
 class TileSprite(StaticObject):
@@ -89,7 +53,6 @@ class TileSprite(StaticObject):
     def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(37, 31, 77),
                  color_anim: str | None = None, unbreakable=False):
         super(TileSprite, self).__init__(pos, pg.Surface(size, pg.SRCALPHA))
-
         self.unbreakable = unbreakable
 
         # SPRITE ANIMATION ------------------------------
@@ -117,11 +80,6 @@ class TileSprite(StaticObject):
                                                        (self.surface.get_width(), self.surface.get_height()),
                                                        (
                                                        self.surface.get_width() / 2, self.surface.get_height() * 0.13)))
-        elif tag == "animated_color":
-            if color_anim is not None:
-                self.surface.fill(self.sprite_loader.current_color_animations[color_anim])
-                self.color_anim = color_anim
-
         elif tag == "color":
             self.surface.fill(self.color)
 
@@ -136,13 +94,10 @@ class TileSprite(StaticObject):
             self.death_time = pg.time.get_ticks()
             
     def update(self) -> None | str:
-        if self.tag == "animated_color":
-            self.color = self.sprite_loader.current_color_animations[self.color_anim]
-            self.surface.fill(self.color)
-        elif self.tag == "beacon":
+        if self.tag == "beacon":
             if self.pressed:
                 new_color = darker(self.color, 80)
-                self.surface.fill(new_color := (new_color[0], new_color[1], 0))
+                self.surface.fill((new_color[0], new_color[1], 0))
             else:
                 self.surface.fill(self.color)
 
@@ -152,13 +107,14 @@ class TileSprite(StaticObject):
 
         return super().update()
 
-
 class Map:
 
     ignore_neighbour = [0, 4]
     g = 10
     s = 11
     b = 12
+    m = "monster"
+    c = 13
 
     menu_map = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -179,24 +135,9 @@ class Map:
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0, s, s, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, m, 0, 0, 0, 0, 0, s, c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
-    base_generation = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s],
-                       [0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, s],
-                       [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
     dimensions = {
         "normal": NormalDimension
     }
@@ -226,7 +167,8 @@ class Map:
             10: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "grass", self.sprite_loader)),
             11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone", self.sprite_loader)),
             12: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "beacon", self.sprite_loader,
-                                               color=pg.Color(150, 150, 0)))
+                                               color=pg.Color(150, 150, 0))),
+            13: (lambda map_, x, y: Canon(map_.app, vec(x, y)))
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {
@@ -338,7 +280,12 @@ class Map:
             id_ = 0, 0
         for r, row in enumerate(matrix):
             for c, col in enumerate(row):
-                if col != 0:
+                if col == "monster":
+                    self.app.game.add_object(
+                        Monster(self.app, (id_[0] * chunk_w + c * self.tile_size.x,
+                                           id_[1] * chunk_h + r * self.tile_size.y), self.tile_size)
+                    )
+                elif col != 0:
                     translated.append(
                         self.translate[col](self,
                                             id_[0] * chunk_w + c * self.tile_size.x,

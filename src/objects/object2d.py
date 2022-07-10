@@ -31,6 +31,8 @@ class Object2d:
                        'right': None,
                        'top': None,
                        'bottom': None}
+        self.color = pg.Color(0, 0, 0)
+        self.tag = "none"
 
     def get_color(self, direction: str):
         match direction:

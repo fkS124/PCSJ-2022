@@ -10,11 +10,14 @@ from .objects import (
     vec,
     Player,
     Text,
+    Button,
     UiObject,
+    BlackLayer,
     create_bg_text,
     obj_type,
     Title,
-    Particle
+    Particle,
+    Monster
 )
 from .background import Background, NormalBackground
 from .map import Map, TileSprite
@@ -76,9 +79,9 @@ class Game:
 
         # OBJECTS --------------------------
         self.objects: list[Object2d | Player] = [Player(app, (0, 0))]
+        self.monsters: list[Monster] = []
         self.player = self.objects[0]
-        self.drawing_objects: list[obj_type] = [self.player]
-        self.static_frames: int = 0
+        self.drawing_objects = [self.player]
         loading_thread.loaded["Objects"] = True
 
         # COLLISION ------------------------
@@ -123,7 +126,7 @@ class Game:
         # UI OBJECTS -------------------------
         self.ui_objects: list[UiObject] = []
         self.init_ui_menu()
-        self.beacons: dict[str, list[TileSprite, Title, bool]] = {}
+        self.beacons: dict[str, list[TileSprite | Title | bool]] = {}
         self.beacons_funcs: dict[str, Callable] = {
             "Play": self.start_game,
             "Settings": self.start_settings,
@@ -135,20 +138,20 @@ class Game:
         self.player.rect.topleft = (400, 400)
         self.game_camera_looking_at = self.player.rect.centerx
         self.game_mode = "normal"
-        self.player.direction = "right"
         self.reset_object_lists()
         self.map.quit_menu()
         self.map.init_game()
-        self.player.vel.x += 8
 
     def reset_object_lists(self):
         self.objects = [self.player]
+        self.monsters = []
         self.collider_objects = []
         self.ui_objects = []
         self.drawing_objects = []
         self.collision_rects = []
 
     def go_back_to_menu(self):
+        self.player.dead = False
         self.reset_object_lists()
         menu_objects = self.map.generate_menu()
         for menu_object in menu_objects:
@@ -199,11 +202,9 @@ class Game:
         return -self.camera_looking_at + (1 / 2) * vec(self.screen.get_size())
 
     def init_ui_menu(self):
-        fonts = {
-            "normal": pg.font.Font("assets/fonts/DISTRO__.ttf", 30),
-            "bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 35),
-            "title_bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 50)
-        }
+        fonts = {"normal": pg.font.Font("assets/fonts/DISTRO__.ttf", 30),
+                 "bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 35),
+                 "title_bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 50)}
         texts = [[(250, 340), "Controls", "bold"],
                  [(200, 400), f"Go left: {pg.key.name(self.player.KEYS['Left']).capitalize()}"],
                  [(200, 440), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
@@ -221,21 +222,15 @@ class Game:
         self.beacons = {}
         self.ui_objects = []
         for data in texts:
-            if len(data) < 3:
-                font = fonts["normal"]
-            else:
-                font = fonts[data[-1]]
+            font = fonts["normal"] if len(data) < 3 else fonts[data[-1]]
             self.ui_objects.append(create_bg_text(data[0], font, data[1], pg.Color(255, 255, 255), shadow_=(2, 2)))
         for pos, title, font_id in titles:
-            font = fonts[font_id]
-            self.ui_objects.append(Title(
-                pos, font, title, color=pg.Color(255, 255, 255), big_scale=1.5, scaling_delay=120, shadow_=(3, 3)
-            ))
+            self.ui_objects.append(Title(pos, fonts[font_id], title, color=pg.Color(255, 255, 255),
+                                         big_scale=1.5, scaling_delay=120, shadow_=(3, 3)))
 
-        tags = ["Play", "Settings", "Quit"]
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
         self.beacons = {dat[0]: [dat[1], self.ui_objects[9 + idx], False] for idx, dat in
-                        enumerate(zip(tags, all_beacons))}
+                        enumerate(zip(["Play", "Settings", "Quit"], all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
         vel = moving_object.vel
@@ -284,16 +279,21 @@ class Game:
                         moving_object.gravity = 0
                 break
 
-    def add_object(self, object_: Object2d):
+    def add_object(self, obj: Object2d):
         # every time you add an object to the game, add it with this method
-        self.objects.append(object_)
-        if isinstance(object_, StaticObject) and not isinstance(object_, DynamicObject):
-            self.collider_objects.append(object_)
+        self.objects.append(obj)
+        if isinstance(obj, StaticObject) and not isinstance(obj, DynamicObject):
+            self.collider_objects.append(obj)
+        elif isinstance(obj, Monster):
+            self.monsters.append(obj)
 
     def handle_events(self, event: pg.event.Event):
         # handle events for every object in the game
-        for object_ in self.objects:
-            object_.handle_events(event)
+        for obj in self.objects:
+            obj.handle_events(event)
+
+        for ui_object in self.ui_objects:
+            ui_object.handle_events(event)
 
         if event.type == pg.KEYDOWN:
             if event.key == 13:
@@ -305,34 +305,25 @@ class Game:
 
     def draw_perspective(self):
         vanishing_point = vec(self.screen.get_size()) / 2
-        length3d = 10
-        reference = self.player.rect.center if self.game_mode == "menu" else vanishing_point
+        screen_rect = pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)
 
-        keys = {"menu": lambda x: (x.rect.y, vec(x.rect.center).distance_to(vec(reference))),
-                "normal": lambda x: ((vec(x.rect.center) + self.scroll).distance_to(vec(reference))),
-                "default": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
-                }
-
-        self.drawing_objects = sorted(self.drawing_objects,
-                                      key=(keys[self.game_mode] if self.game_mode in keys else keys["default"]),
-                                      reverse=True)
+        self.drawing_objects.sort(key=lambda x: (x.rect.centery, abs(x.rect.centerx-self.player.rect.x)), reverse=True)
         if self.player in self.drawing_objects:
             self.drawing_objects.remove(self.player)
             self.drawing_objects.append(self.player)
 
-        for object_ in self.drawing_objects:
-            if not pg.Rect(object_.rect.topleft + self.scroll, object_.rect.size).colliderect(
-                    pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)) \
-                    or object_.DONT_DRAW_PERSPECTIVE:
+        for obj in self.drawing_objects:
+            if not obj.rect.move(self.scroll).colliderect(screen_rect) or obj.DONT_DRAW_PERSPECTIVE:
                 continue
 
-            if hasattr(object_, "tag") and object_.tag == "spike":
-                pos_left = object_.rect.topleft + vec(0, object_.surface.get_height()) + self.scroll
-                pos_right = object_.rect.topleft + vec(object_.surface.get_width(),
-                                                       object_.surface.get_height()) + self.scroll
-                pos_top = object_.rect.topleft + vec(object_.surface.get_width() / 2,
-                                                     object_.surface.get_height() * 0.13) + self.scroll
-                color = object_.color
+            length3d = obj.length3d if hasattr(obj, "length3d") else 10
+
+            if hasattr(obj, "tag") and obj.tag == "spike":
+                pos_left = vec(obj.rect.topleft) + vec(0, obj.surface.get_height()) + self.scroll
+                pos_right = vec(obj.rect.topleft) + vec(obj.surface.get_width(), obj.surface.get_height()) + self.scroll
+                pos_top = vec(obj.rect.topleft) + vec(obj.surface.get_width() / 2,
+                                                      obj.surface.get_height() * 0.13) + self.scroll
+                color = obj.color
 
                 vector_left = (vanishing_point - pos_left) / length3d
                 vector_right = (vanishing_point - pos_right) / length3d
@@ -373,9 +364,8 @@ class Game:
                     polygon(self.screen, change(color, 0.5),
                             (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
             else:
-                pos = vec(object_.rect.topleft) + self.scroll
-                w, h = object_.rect.w, object_.rect.h
-                color = object_.surface.get_at((5, 0))
+                pos = vec(obj.rect.topleft) + self.scroll
+                w, h = obj.rect.w, obj.rect.h
 
                 vector = vanishing_point - pos
                 cond = vector[0] > w / 2, vector[1] > h / 2
@@ -397,10 +387,10 @@ class Game:
                          'bottom': -vec(0, h)}
 
                 colors = {
-                    'left': object_.get_color('left'),
-                    'right': object_.get_color('right'),
-                    'top': object_.get_color('top'),
-                    'bottom': object_.get_color('bottom')}
+                    'left': obj.get_color('left'),
+                    'right': obj.get_color('right'),
+                    'top': obj.get_color('top'),
+                    'bottom': obj.get_color('bottom')}
 
                 conditions = {'left': vector[0] < 0,
                               'right': vector[0] > 0,
@@ -408,7 +398,7 @@ class Game:
                               'bottom': vector[1] > 0}
 
                 for i in range(0, 2):
-                    if (not self.map.has_neighbour(way[i], object_) or object_ == self.player) and conditions[way[i]]:
+                    if (not self.map.has_neighbour(way[i], obj) or obj == self.player) and conditions[way[i]]:
                         polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i + 1]],
                                                               pos + point[way[-i + 1]] + vectors[way[-i + 1]],
                                                               pos + vector))
@@ -423,31 +413,37 @@ class Game:
             if ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
 
+    def init_death_screen(self):
+        fonts = pg.font.Font("assets/fonts/DISTROB_.ttf", 25), pg.font.Font("assets/fonts/DISTROB_.ttf", 80)
+        self.ui_objects = []
+        self.ui_objects.extend((BlackLayer((0, 0), self.screen.get_size()),
+                                Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7)-100),
+                                     fonts[1], "You died !", pg.Color(255, 0, 0), shadow_=(2, 2), centered=True))),
+        self.ui_objects[-1].FIXED = True
+        self.ui_objects[-1].IN_BACKGROUND = False
+        self.ui_objects.append(Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7)),
+                                    fonts[0], f"Your score : {-1}", pg.Color(255, 255, 255), centered=True))
+        # TODO : put the real score
+        self.ui_objects[-1].FIXED = True
+        self.ui_objects[-1].IN_BACKGROUND = False
+        self.ui_objects.append(Button(
+            (self.screen.get_width() // 2 - 150, int(self.screen.get_height() // 2)),
+            (300, 100), Text((0, 0), fonts[0], "Respawn", pg.Color(0, 0, 0), shadow_=(2, 2)),
+            click_func=self.go_back_to_menu, normal_color=pg.Color(255, 205, 60), hover_color=pg.Color(240, 190, 45)
+        ))
+
     def kill_player(self):
-        self.go_back_to_menu()
+        self.player.dead = True
+        self.init_death_screen()
 
     def routine(self):
         # print(self.player.rect.center, self.player.vel.x)
-        # update all the color animations (they're global, so that all the sprites have the same
-        self.map.sprite_loader.calculate_color_animations()
 
         # update the scroll value (for camera)
         self.draw_background()
 
-        font = pg.font.Font("assets/fonts/Consolas.ttf", 40)
+        # update the camera
         self.scroll = self.get_scroll()
-        self.texts = []
-
-        if self.game_mode != "menu":
-            pass
-            # DO HERE ALL THE CHECKING OF GAME STATES
-            # screen_rect = self.screen.get_rect(center=(self.game_camera_looking_at, self.camera_fixed_y))
-            # screen_rect.topleft -= vec(300, 0)
-            # screen_rect.size += vec(600, 0)
-
-            # if not self.player.rect.colliderect(screen_rect):
-            #     # PLAYER DIES -> go back to menu -> TODO: put a death screen
-            #     self.kill_player()
 
         # get collision rects for this frame
         self.collision_rects = [
@@ -458,18 +454,14 @@ class Game:
                 collider.custom_collider[3] if cond else collider.rect[3]), collider) for collider in
             self.collider_objects]
 
-        self.drawing_objects = [self.player]
-        if self.game_mode == "menu":
-            current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
-        else:
-            current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
+        self.drawing_objects = [self.player] if self.player in self.objects else []
+        current_chunk = self.map.get_current_chunk(vec(self.player.rect.topleft))
         translations = [(0, 0), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (-1, 1), (0, -1), (1, -1)]
         if self.map.menu:
-            if current_chunk == (0, 0):
-                self.drawing_objects.extend(self.map.generated_chunks["menu"])
-                translations = [(-1, 0), (1, 0)]
-            else:
-                translations = [(0, 0), (-1, 0), (1, 0)]
+            self.drawing_objects.extend(self.map.generated_chunks["menu"])
+            translations = [(-1, 0), (1, 0)]
+            if current_chunk != (0, 0):
+                translations.append((0, 0))
         elif self.map.horizontal_only:
             translations = [(0, 0), (1, 0), (-1, 0)]
         elif self.map.vertical_only:
@@ -482,6 +474,7 @@ class Game:
                     self.add_object(obj)
             self.drawing_objects.extend(working_chunk[0])
 
+        # check for interaction with the beacons (interactive in-game buttons)
         if self.game_mode == "menu":
             for key, beacon in self.beacons.items():
                 beacon[0].pressed = self.player.rect.colliderect(beacon[0].button_rect)
@@ -492,21 +485,25 @@ class Game:
 
         # update all objects
         to_remove = []
-        for object_ in self.objects:
-            upd = object_.update()
-            if hasattr(object_, "tag") and object_.tag == "spike":
-                if self.map.collide_spike_player(self.player, object_):
+
+        # Update all objects, and add them to the draw
+        for obj in self.objects:
+            upd = obj.update()
+            if hasattr(obj, "tag") and obj.tag == "spike":
+                if self.map.collide_spike_player(self.player, obj):
                     self.kill_player()
 
             if upd == "kill":
-                to_remove.append((object_, self.map.get_chunk(vec(object_.rect.center))))
-            elif object_.ABSOLUTE_DRAW:  # draw the objects that are not included in the map
-                self.drawing_objects.append(object_)
-            elif object_.DONT_DRAW and object_ in self.drawing_objects:
-                self.drawing_objects.remove(object_)
+                to_remove.append((obj, self.map.get_chunk(vec(obj.rect.center))))
+            elif obj.ABSOLUTE_DRAW:  # draw the objects that are not included in the map
+                self.drawing_objects.append(obj)
+            elif obj.DONT_DRAW and obj in self.drawing_objects:
+                self.drawing_objects.remove(obj)
 
+        # Remove all the objects that have to be removed
         for obj, chunk in to_remove:
-            self.objects.remove(obj)
+            if obj in self.objects:
+                self.objects.remove(obj)
             if chunk in self.map.generated_chunks and obj in self.map.generated_chunks[chunk]:
                 self.map.chunks[chunk][(idx := self.map.get_index_from_co(vec(obj.rect.topleft))[:2])[0]][
                     idx[1]] = 0
@@ -518,51 +515,17 @@ class Game:
         self.draw_perspective()
 
         # draw all see able objects
-        for object_ in self.drawing_objects:
-            object_.draw(self.screen, self.scroll)
+        for obj in self.drawing_objects:
+            obj.draw(self.screen, self.scroll)
 
+        # draw the UI (the UiObjects not contained in the Background)
         for ui_object in self.ui_objects:
             if not ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
 
-        # if self.player.static_y and not self.player.static_x:
-        #     self.add_object(
-        #         Particle(self.app,
-        #                  self.player.rect.bottomleft if self.player.direction == "right"
-        #                  else self.player.rect.bottomright, (10, 10), pg.Color(255, 255, 255),
-        #                  vec(-20, -80) if self.player.direction == "right"
-        #                  else vec(20, -50), 500)
-        #     )
-
-        if self.static_frames > 7 or self.player.rect.bottom > self.map.chunk_size.y * self.map.tile_size.y + 200:
-            # DEATH OF THE PLAYER
-            # TODO: a better transition
-            self.go_back_to_menu()
-
-        """ DEBUG -------------------------------------------
-        for chunk in self.map.chunks:
-            self.texts.append(
-                (rendering := font.render(f"{chunk}", True, (0, 255, 0)),
-                 rendering.get_rect(topleft=(chunk[0] * self.map.chunk_size * self.map.tile_size.x,
-                                             chunk[1] * self.map.chunk_size * self.map.tile_size.y)))
-            )
-            pg.draw.rect(self.screen, (0, 255, 0),
-                         [chunk[0] * self.map.chunk_size * self.map.tile_size.x + self.scroll.x,
-                          chunk[1] * self.map.chunk_size * self.map.tile_size.y + self.scroll.y,
-                          self.map.chunk_size * self.map.tile_size.x,
-                          self.map.chunk_size * self.map.tile_size.y], 1)
-
-        for txt, rct in self.texts:
-            self.screen.blit(txt, rct.topleft + self.scroll)
-
-        
-            rect = object_.rect.copy()
-            if hasattr(object_, "custom_collider"):
-                rect.topleft += vec(object_.custom_collider[:2])
-                if object_.custom_collider != [0, 0, 0, 0]:
-                    rect.size = object_.custom_collider[2:]
-            pg.draw.rect(self.screen, (255, 0, 0), rect, 1)
-
-        for rect in self.collision_rects:
-            pg.draw.rect(self.screen, (0, 255, 0), rect, 1)
-        """
+        # DEATH CONDITIONS --------------------
+        if self.player.rect.y > 1160:
+            self.kill_player()
+        for monster in self.monsters:
+            if monster.rect.colliderect(self.player.rect):
+                self.kill_player()

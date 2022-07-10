@@ -36,19 +36,32 @@ class UiObject:
         display.blit(self.surface, self.rect.topleft + offset)
 
 
+class BlackLayer(UiObject):
+
+    IN_BACKGROUND = False
+    FIXED = True
+
+    def __init__(self, pos, size, alpha=125):
+        super(BlackLayer, self).__init__(pos, size)
+        self.surface.fill((0, 0, 0))
+        self.surface.set_alpha(alpha)
+
+
 class Text(UiObject):
     """
     A text object that can be drawn on screen.
     """
 
     def __init__(self, pos: tuple[int, int], font: pg.font.Font, text: str, color: pg.Color, resize_=(0, 0), scale_=0,
-                 shadow_: tuple[int, int] | None = None):
+                 shadow_: tuple[int, int] | None = None, centered=False):
         self.font = font
         self.color = color
         self.text = text
 
         rendered_text = font.render(text, True, color)
         super(Text, self).__init__(pos, rendered_text.get_size(), alpha=True)
+        if centered:
+            self.rect.center = pos
         self.surface.blit(rendered_text, (0, 0))
 
         if resize_ != (0, 0):
@@ -154,6 +167,8 @@ class Button(UiObject):
     """
     A button, usable anywhere
     """
+    IN_BACKGROUND = False
+    FIXED = True
 
     def __init__(self,
                  pos: tuple[int, int],
@@ -168,9 +183,9 @@ class Button(UiObject):
                  button: int = 1,
                  exec_type: str = "down",
                  click_func=None,
-                 click_func_args=tuple,
+                 click_func_args: tuple = None,
                  hover_func=None,
-                 hover_func_args=tuple,
+                 hover_func_args: tuple = None,
                  ):
         super(Button, self).__init__(pos, size, True)
 
@@ -192,11 +207,11 @@ class Button(UiObject):
 
     def handle_events(self, event: pg.event.Event):
         if event.type == pg.MOUSEBUTTONDOWN:
-            if event.button == self.button:
+            if event.button == self.button and self.rect.collidepoint(event.pos):
                 self.exec_func("up", "click")
                 self.state = "click"
         elif event.type == pg.MOUSEBUTTONUP:
-            if event.button == self.button:
+            if event.button == self.button and self.rect.collidepoint(event.pos):
                 self.exec_func("down", "click")
                 self.state = "hover" if self.rect.collidepoint(event.pos) else "normal"
 
@@ -208,7 +223,7 @@ class Button(UiObject):
                 else:
                     self.func[exec_type]()
 
-    def update(self):
+    def draw(self, display: pg.Surface, offset=pg.Vector2(0, 0)):
         mouse_pos = pg.mouse.get_pos()
         self.surface.fill((0, 0, 0, 0))
 
@@ -231,3 +246,4 @@ class Button(UiObject):
         else:
             pg.draw.rect(self.surface, color, [0, 0, *self.surface.get_size()])
         self.surface.blit(text.surface, text.surface.get_rect(center=(self.rect.w / 2, self.rect.h / 2)))
+        display.blit(self.surface, self.rect)

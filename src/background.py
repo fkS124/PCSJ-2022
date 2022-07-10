@@ -38,16 +38,15 @@ class CloudSprite(Object2d):
         self.surface.fill((246, 246, 246))
         self.rect = self.surface.get_rect(center=pos)
         self.x = self.rect.x
+        self.perspective_x = 0
 
         self.w, self.h = 1920, 1080
 
     def update(self, camera_dxy: vec = vec(0, 0)):
         self.x += (1 + 1 / self.tag) - camera_dxy.x / self.scrolling[self.tag]
         self.rect.x = round(self.x)
-        if self.rect.x > self.w:
-            self.x = -self.rect.w
-        elif self.rect.right < 0:
-            self.x = self.w
+        if self.rect.x + self.perspective_x > self.w:
+            self.x = -self.rect.w - abs(self.perspective_x)
         if self.rect.y > self.h:
             self.rect.bottom = 0
         elif self.rect.bottom < 0:
@@ -104,6 +103,7 @@ class NormalBackground(Background):
                            'bottom': vec(vector + vec(0, h)) / length3d}
 
                 vector /= length3d
+                sprite.perspective_x = vector.x
 
                 point = {'left': vec(w, 0),
                          'right': -vec(w, 0),
@@ -123,7 +123,7 @@ class NormalBackground(Background):
                 for i in range(0, 2):
                     if conditions[way[i]]:
                         filled_polygon(display, (pos, pos + point[way[-i + 1]],
-                                        pos + point[way[-i + 1]] + vectors[way[-i + 1]],
-                                                                pos + vector), colors[way[i]])
+                                                 pos + point[way[-i + 1]] + vectors[way[-i + 1]],
+                                                 pos + vector), colors[way[i]])
                 sprite.draw(display)
 

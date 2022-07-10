@@ -64,6 +64,7 @@ class Player(UserObject):
         self.surface = pg.Surface((80, 80))
         self.rect = self.surface.get_rect(center=self.rect.center)
         self.player_color = (255, 205, 60)
+        self.dead = False
 
         self.mask = pg.mask.from_surface(self.surface)
 
@@ -94,17 +95,17 @@ class Player(UserObject):
                 self.dash_available = True
 
     def jump(self):
-        if not self.jumping:
+        if not self.jumping and not self.dead:
             self.jumping = True
             self.gravity = - 24
 
     def dash(self):
-        if self.dash_available:
+        if self.dash_available and not self.dead:
             self.dash_vel = self.directions[self.direction] * self.dash_base_vel
             self.dash_available = False
             self.dashing = True
             self.dash_time = pg.time.get_ticks()
 
     def move(self, direction: str):
-        self.vel += self.directions[direction] * self.base_vel
+        self.vel += self.directions[direction] * self.base_vel * (not self.dead)
         self.direction = direction
