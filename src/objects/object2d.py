@@ -51,7 +51,7 @@ class Object2d:
         # offset is in order to add a scrolling camera option
         display.blit(self.surface, self.rect.topleft+offset)
 
-    def update(self) -> None:
+    def update(self, *args, **kwargs) -> None:
         pass
 
     def handle_events(self, event: pg.event.Event) -> None:

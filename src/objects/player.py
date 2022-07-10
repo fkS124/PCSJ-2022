@@ -106,6 +106,5 @@ class Player(UserObject):
             self.dash_time = pg.time.get_ticks()
 
     def move(self, direction: str):
-        if self.app.game.game_mode == "menu":
-            self.vel += self.directions[direction] * self.base_vel
-            self.direction = direction
+        self.vel += self.directions[direction] * self.base_vel
+        self.direction = direction

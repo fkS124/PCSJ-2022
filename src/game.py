@@ -16,6 +16,7 @@ from .objects import (
     Title,
     Particle
 )
+from .background import Background, NormalBackground
 from .map import Map, TileSprite
 
 
@@ -35,6 +36,10 @@ def polygon(display: pg.Surface, color, points: list[vec, ...] | tuple[vec, ...]
 
 def load(path: str):
     return pg.image.load(path).convert()
+
+
+def load_a(path: str):
+    return pg.image.load(path).convert_alpha()
 
 
 def resize(w, h, img: pg.Surface):
@@ -110,10 +115,10 @@ class Game:
         loading_thread.loaded["Camera"] = True
 
         # BACKGROUND ------------------------
-        self.layers = [
-            [], [], []
-        ]
-        self.init_background("normal")
+        self.backgrounds: dict[str, Background] = {
+            "menu": NormalBackground(),
+            "normal": NormalBackground()
+        }
         loading_thread.loaded["Background"] = True
 
         # UI OBJECTS -------------------------
@@ -165,9 +170,9 @@ class Game:
             looking_point = vec(self.camera_following_object.center)
             self.camera_free = False
         else:
-            looking_point = vec(self.player.rect.center)+vec(100, 0)
-            if looking_point.y > 800:
-                looking_point.y = 800
+            looking_point = vec(self.player.rect.center)
+            if looking_point.y > 760:
+                looking_point.y = 760
             self.camera_fixed_y = None
             self.camera_fixed_x = None
 
@@ -401,19 +406,15 @@ class Game:
                         polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i+1]],
                                 pos + point[way[-i+1]] + vectors[way[-i+1]], pos + vector))
 
-    def init_background(self, theme: str):
-        if theme == "normal":
-            pass
-
     def draw_background(self):
         self.screen.fill((111, 93, 231))
+
+        if self.game_mode in self.backgrounds:
+            self.backgrounds[self.game_mode].draw(self.screen, self.cam_dxy)
 
         for ui_object in self.ui_objects:
             if ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
-
-        if self.game_mode == "normal":
-            pass
 
     def kill_player(self):
         self.go_back_to_menu()
@@ -431,7 +432,7 @@ class Game:
         self.texts = []
 
         if self.game_mode != "menu":
-            self.player.vel.x += 8
+            pass
             # DO HERE ALL THE CHECKING OF GAME STATES
             # screen_rect = self.screen.get_rect(center=(self.game_camera_looking_at, self.camera_fixed_y))
             # screen_rect.topleft -= vec(300, 0)
@@ -516,11 +517,6 @@ class Game:
         for ui_object in self.ui_objects:
             if not ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
-
-        if self.player.static_x and not self.game_mode == "menu":
-            self.static_frames += 1
-        else:
-            self.static_frames = 0
 
         # if self.player.static_y and not self.player.static_x:
         #     self.add_object(

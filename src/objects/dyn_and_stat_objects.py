@@ -22,6 +22,7 @@ class DynamicObject(StaticObject):
 
         # ---------- Move
         self.vel = vec(0, 0)  # each frame, add this velocity to the object
+        self.last_vel = self.vel.copy()
 
         self.static_x = False
         self.static_y = False
@@ -36,6 +37,7 @@ class DynamicObject(StaticObject):
 
         self.static_x = self.vel.x == 0
         self.static_y = self.vel.y == 0
+        self.last_vel = self.vel.copy()
 
         # the algorithm will have changed velocity if needed (in case of an incoming collision)
         # so just apply the velocity to the object
