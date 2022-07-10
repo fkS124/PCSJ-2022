@@ -31,7 +31,6 @@ def reversed_dir(direction: str | None):
 
 def polygon(display: pg.Surface, color, points: list[vec, ...] | tuple[vec, ...]):
     filled_polygon(display, points, color)
-    aapolygon(display, points, color)
 
 
 def load(path: str):
@@ -235,7 +234,8 @@ class Game:
 
         tags = ["Play", "Settings", "Quit"]
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
-        self.beacons = {dat[0]: [dat[1], self.ui_objects[9+idx], False] for idx, dat in enumerate(zip(tags, all_beacons))}
+        self.beacons = {dat[0]: [dat[1], self.ui_objects[9 + idx], False] for idx, dat in
+                        enumerate(zip(tags, all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
         vel = moving_object.vel
@@ -304,18 +304,23 @@ class Game:
                 self.go_back_to_menu()
 
     def draw_perspective(self):
-        vanishing_point = vec(self.camera_looking_at)
+        vanishing_point = vec(self.screen.get_size()) / 2
         length3d = 10
-        reference = self.player.rect.center if self.game_mode == "menu" else self.camera_looking_at
+        reference = self.player.rect.center if self.game_mode == "menu" else vanishing_point
 
         keys = {"menu": lambda x: (x.rect.y, vec(x.rect.center).distance_to(vec(reference))),
-                "normal": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
+                "normal": lambda x: ((vec(x.rect.center) + self.scroll).distance_to(vec(reference))),
                 "default": lambda x: (vec(x.rect.center).distance_to(vec(reference))),
                 }
 
-        for object_ in sorted(self.drawing_objects,
-                              key=(keys[self.game_mode] if self.game_mode in keys else keys["default"]),
-                              reverse=True):
+        self.drawing_objects = sorted(self.drawing_objects,
+                                      key=(keys[self.game_mode] if self.game_mode in keys else keys["default"]),
+                                      reverse=True)
+        if self.player in self.drawing_objects:
+            self.drawing_objects.remove(self.player)
+            self.drawing_objects.append(self.player)
+
+        for object_ in self.drawing_objects:
             if not pg.Rect(object_.rect.topleft + self.scroll, object_.rect.size).colliderect(
                     pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)) \
                     or object_.DONT_DRAW_PERSPECTIVE:
@@ -329,9 +334,9 @@ class Game:
                                                      object_.surface.get_height() * 0.13) + self.scroll
                 color = object_.color
 
-                vector_left = (vanishing_point - pos_left + self.scroll) / length3d
-                vector_right = (vanishing_point - pos_right + self.scroll) / length3d
-                vector_top = (vanishing_point - pos_top + self.scroll) / length3d
+                vector_left = (vanishing_point - pos_left) / length3d
+                vector_right = (vanishing_point - pos_right) / length3d
+                vector_top = (vanishing_point - pos_top) / length3d
                 vectors = [vector_left, vector_right, vector_top]
 
                 if vector_left[0] > 0 > vector_left[1] and -1.7 < vector_left[1] / vector_left[0] < 0:
@@ -344,7 +349,8 @@ class Game:
                     continue
 
                 if vector_top[1] > 0 and (
-                    vector_top[1] / vector_top[0] > 1.7 if vector_top[0] > 0 else vector_top[1] / vector_top[0] < -1.7):
+                        vector_top[1] / vector_top[0] > 1.7 if vector_top[0] > 0 else vector_top[1] / vector_top[
+                            0] < -1.7):
                     polygon(self.screen, change(color, 0.75),
                             (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
                     continue
@@ -371,8 +377,8 @@ class Game:
                 w, h = object_.rect.w, object_.rect.h
                 color = object_.surface.get_at((5, 0))
 
-                vector = vanishing_point - pos + self.scroll
-                cond = vector[0] > w/2, vector[1] > h/2
+                vector = vanishing_point - pos
+                cond = vector[0] > w / 2, vector[1] > h / 2
                 way = ['bottom' if cond[1] else 'top', 'right' if cond[0] else 'left']
 
                 vector -= vec(w * cond[0], h * cond[1])
@@ -403,11 +409,12 @@ class Game:
 
                 for i in range(0, 2):
                     if (not self.map.has_neighbour(way[i], object_) or object_ == self.player) and conditions[way[i]]:
-                        polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i+1]],
-                                pos + point[way[-i+1]] + vectors[way[-i+1]], pos + vector))
+                        polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i + 1]],
+                                                              pos + point[way[-i + 1]] + vectors[way[-i + 1]],
+                                                              pos + vector))
 
     def draw_background(self):
-        self.screen.fill((111, 93, 231))
+        self.screen.fill((135, 206, 235))
 
         if self.game_mode in self.backgrounds:
             self.backgrounds[self.game_mode].draw(self.screen, self.cam_dxy)
