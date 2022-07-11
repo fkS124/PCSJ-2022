@@ -57,13 +57,14 @@ class Player(UserObject):
         # jump
         self.jumping = True
         self.gravity = 0
+        self.d_gravity = 1
 
         # Custom collider settings (still to be determined)
         # self.set_custom_collider([10, 10, 80, 80])
 
         self.surface = pg.Surface((80, 80))
         self.rect = self.surface.get_rect(center=self.rect.center)
-        self.player_color = (255, 205, 60)
+        self.color = (255, 205, 60)
         self.dead = False
 
         self.mask = pg.mask.from_surface(self.surface)
@@ -79,11 +80,18 @@ class Player(UserObject):
         self.DONT_DRAW = self.dead
         self.DONT_DRAW_PERSPECTIVE = self.dead
 
-        self.surface.fill(self.player_color)
+        if self.app.game.map.get_environment(self) == "neon":
+            self.surface.fill((0, 0, 0))
+            self.d_gravity = -1
+        elif self.app.game.map.get_environment(self) == "moon":
+            self.d_gravity = 0.5
+        else:
+            self.surface.fill(self.color)
+            self.d_gravity = 1
 
         if self.jumping:
             self.vel.y = self.gravity
-            self.gravity += 1 * 60 / self.app.clock.get_fps()
+            self.gravity += self.d_gravity * 60 / self.app.clock.get_fps()
         if self.dashing:
             if pg.time.get_ticks() - self.last_frame > self.delay_frames:
                 self.app.game.add_object(Trail(self.rect.topleft, self.rect.size, self.surface.get_at((0, 0)),
@@ -100,7 +108,7 @@ class Player(UserObject):
     def jump(self):
         if not self.jumping and not self.dead:
             self.jumping = True
-            self.gravity = - 24
+            self.gravity = - 24 if self.app.game.map.get_environment(self) != "neon" else 24
 
     def dash(self):
         if self.dash_available and not self.dead:

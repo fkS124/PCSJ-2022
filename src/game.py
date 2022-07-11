@@ -1,6 +1,6 @@
 import pygame as pg
 from typing import Callable
-from pygame.gfxdraw import aapolygon, filled_polygon
+from pygame.gfxdraw import filled_polygon, aapolygon
 from .objects import (
     DynamicObject,
     StaticObject,
@@ -34,6 +34,11 @@ def reversed_dir(direction: str | None):
 
 def polygon(display: pg.Surface, color, points: list[vec, ...] | tuple[vec, ...]):
     filled_polygon(display, points, color)
+
+
+def neon_polygon(display: pg.Surface, color, points: list[vec, ...] | tuple[vec, ...]):
+    pg.draw.polygon(display, (0, 0, 0), points)
+    aapolygon(display, points, (255, 255, 255))
 
 
 def load(path: str):
@@ -233,6 +238,7 @@ class Game:
                         enumerate(zip(["Play", "Settings", "Quit"], all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
+        environment = self.map.get_environment(moving_object)
         vel = moving_object.vel
         rect = moving_object.rect.copy()
         moving_object.jumping = True
@@ -263,21 +269,31 @@ class Game:
                 continue
             if not (n_rect.left < c_rect.right and n_rect.right > c_rect.left):
                 continue
-            if vel.y >= 0:
-                if abs(c_rect.top - n_rect.bottom) <= vel.y and not moving_object.gravity < 0:
-                    moving_object.vel.y = c_rect.top - rect.bottom
-                    moving_object.gravity = 0
-                    moving_object.jumping = False
-                    if self.game_mode == "destruct" and hasattr(collider, "kill"):
-                        if hasattr(collider, "unbreakable") and not collider.unbreakable:
-                            collider.kill()
-                    break
-            elif vel.y < 0:
-                if abs(c_rect.bottom - n_rect.top) <= - vel.y:
-                    moving_object.vel.y = c_rect.bottom - rect.top
-                    if moving_object.jumping:
+
+            if environment != "neon":
+                if vel.y >= 0:
+                    if abs(c_rect.top - n_rect.bottom) <= vel.y and moving_object.gravity > 0:
+                        moving_object.vel.y = c_rect.top - rect.bottom
                         moving_object.gravity = 0
-                break
+                        moving_object.jumping = False
+                        break
+                elif vel.y < 0:
+                    if abs(c_rect.bottom - n_rect.top) <= - vel.y:
+                        moving_object.vel.y = c_rect.bottom - rect.top
+                        if moving_object.jumping:
+                            moving_object.gravity = 0
+            else:
+                if vel.y >= 0:
+                    if abs(c_rect.top - n_rect.bottom) <= vel.y:
+                        moving_object.vel.y = c_rect.top - rect.bottom
+                        if moving_object.jumping:
+                            moving_object.gravity = 0
+                        break
+                elif vel.y < 0:
+                    if abs(c_rect.bottom - n_rect.top) <= - vel.y and moving_object.gravity < 0:
+                        moving_object.vel.y = c_rect.bottom - rect.top
+                        moving_object.gravity = 0
+                        moving_object.jumping = False
 
     def add_object(self, obj: Object2d):
         # every time you add an object to the game, add it with this method
@@ -322,6 +338,8 @@ class Game:
             length3d = obj.length3d if hasattr(obj, "length3d") else 10
 
             if hasattr(obj, "tag") and obj.tag == "spike":
+                func = polygon if not (hasattr(obj, "style") and obj.style == "neon") else neon_polygon
+
                 pos_left = vec(obj.rect.topleft) + vec(0, obj.surface.get_height()) + self.scroll
                 pos_right = vec(obj.rect.topleft) + vec(obj.surface.get_width(), obj.surface.get_height()) + self.scroll
                 pos_top = vec(obj.rect.topleft) + vec(obj.surface.get_width() / 2,
@@ -334,39 +352,42 @@ class Game:
                 vectors = [vector_left, vector_right, vector_top]
 
                 if vector_left[0] > 0 > vector_left[1] and -1.7 < vector_left[1] / vector_left[0] < 0:
-                    polygon(self.screen, change(color, 0.8),
-                            (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
+                    func(self.screen, change(color, 0.8),
+                         (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
                     continue
                 if vector_right[0] < 0 < vector_right[1] / vector_right[0] < 1.7 and vector_left[1] < 0:
-                    polygon(self.screen, change(color, 0.5),
-                            (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
+                    func(self.screen, change(color, 0.5),
+                         (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
                     continue
 
                 if vector_top[1] > 0 and (
                         vector_top[1] / vector_top[0] > 1.7 if vector_top[0] > 0 else vector_top[1] / vector_top[
                             0] < -1.7):
-                    polygon(self.screen, change(color, 0.75),
-                            (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    func(self.screen, change(color, 0.75),
+                         (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
                     continue
 
                 vectors = sorted(vectors, key=lambda x: x[0] ** 2 + x[1] ** 2)
 
                 if vectors[0] == vector_left:
-                    polygon(self.screen, change(color, 0.75),
-                            (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
-                    polygon(self.screen, change(color, 0.5),
-                            (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
+                    func(self.screen, change(color, 0.75),
+                         (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    func(self.screen, change(color, 0.5),
+                         (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
                 elif vectors[0] == vector_right:
-                    polygon(self.screen, change(color, 0.75),
-                            (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
-                    polygon(self.screen, change(color, 0.8),
-                            (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
+                    func(self.screen, change(color, 0.75),
+                         (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    func(self.screen, change(color, 0.8),
+                         (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
                 else:
-                    polygon(self.screen, change(color, 0.8),
-                            (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
-                    polygon(self.screen, change(color, 0.5),
-                            (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
+                    func(self.screen, change(color, 0.8),
+                         (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
+                    func(self.screen, change(color, 0.5),
+                         (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
             else:
+                func = neon_polygon if (hasattr(obj, "style") and obj.style == "neon") or \
+                                       (self.map.get_environment(self.player) == "neon") else polygon
+
                 pos = vec(obj.rect.topleft) + self.scroll
                 w, h = obj.rect.w, obj.rect.h
 
@@ -402,9 +423,9 @@ class Game:
 
                 for i in range(0, 2):
                     if (not self.map.has_neighbour(way[i], obj) or obj == self.player) and conditions[way[i]]:
-                        polygon(self.screen, colors[way[i]], (pos, pos + point[way[-i + 1]],
-                                                              pos + point[way[-i + 1]] + vectors[way[-i + 1]],
-                                                              pos + vector))
+                        func(self.screen, colors[way[i]], (pos, pos + point[way[-i + 1]],
+                                                           pos + point[way[-i + 1]] + vectors[way[-i + 1]],
+                                                           pos + vector))
 
     def draw_background(self):
         self.screen.fill((135, 206, 235))
@@ -415,6 +436,9 @@ class Game:
         for ui_object in self.ui_objects:
             if ui_object.IN_BACKGROUND:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
+
+        if self.map.get_environment(self.player) == "neon":
+            self.screen.fill((0, 0, 0))
 
     def init_death_screen(self):
         fonts = pg.font.Font("assets/fonts/DISTROB_.ttf", 25), pg.font.Font("assets/fonts/DISTROB_.ttf", 80)
@@ -441,6 +465,7 @@ class Game:
         self.init_death_screen()
 
     def routine(self):
+        # self.game_mode = self.map.get_environment(self.player)
         # print(self.player.rect.center, self.player.vel.x)
 
         # update the scroll value (for camera)
@@ -521,6 +546,20 @@ class Game:
         # draw all see able objects
         for obj in self.drawing_objects:
             obj.draw(self.screen, self.scroll)
+            if (hasattr(obj, "tag") and obj.tag == "neon") or self.map.get_environment(self.player) == "neon":
+                if obj.tag != "spike":
+                    neon_polygon(self.screen, obj.color, [
+                        vec(obj.rect.topleft) + self.scroll,
+                        vec(obj.rect.topright) + self.scroll,
+                        vec(obj.rect.bottomright) + self.scroll,
+                        vec(obj.rect.bottomleft) + self.scroll
+                    ])
+                else:
+                    neon_polygon(self.screen, obj.color, [
+                        vec(obj.rect.bottomleft) + self.scroll,
+                        vec(obj.rect.bottomright) + self.scroll,
+                        vec(obj.rect.x + obj.rect.w / 2, obj.rect.y + obj.rect.h * 0.13) + self.scroll
+                    ])
 
         # draw the UI (the UiObjects not contained in the Background)
         for ui_object in self.ui_objects:

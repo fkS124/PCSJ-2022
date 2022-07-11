@@ -52,7 +52,7 @@ class TileSprite(StaticObject):
     }
 
     def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(37, 31, 77),
-                 color_anim: str | None = None, unbreakable=False):
+                 unbreakable=False):
         super(TileSprite, self).__init__(pos, pg.Surface(size, pg.SRCALPHA))
         self.unbreakable = unbreakable
 
@@ -60,6 +60,7 @@ class TileSprite(StaticObject):
         self.sprite_loader = sprite_loader
         self.color = color
         self.tag = tag
+        self.style = "neon" if "neon" in tag else "normal"
         if tag in self.sprite_loader.sprites:
             self.surface = self.sprite_loader.sprites[tag]
         elif tag in self.special_color_set:
@@ -73,16 +74,27 @@ class TileSprite(StaticObject):
             self.color = color
             self.pressed = False
             self.button_rect = pg.Rect(self.rect.x, self.rect.y - 50, self.rect.w, 50)
-        elif tag == "spike":
+        elif "spike" in self.tag:
+            self.tag = "spike"
             self.DONT_COLLIDE = True
             self.surface = pg.Surface(size, pg.SRCALPHA)
             self.color = (255, 0, 0)
             pg.draw.polygon(self.surface, self.color, ((0, self.surface.get_height()),
                                                        (self.surface.get_width(), self.surface.get_height()),
-                                                       (
-                                                       self.surface.get_width() / 2, self.surface.get_height() * 0.13)))
+                                                       (self.surface.get_width() / 2,
+                                                        self.surface.get_height() * 0.13)))
         elif tag == "color":
             self.surface.fill(self.color)
+
+        if self.style == "neon":
+            if self.tag != "spike":
+                self.surface.set_alpha(0)
+            else:
+                pg.draw.polygon(self.surface, (0, 0, 0), ((0, self.surface.get_height()),
+                                                           (self.surface.get_width(), self.surface.get_height()),
+                                                           (self.surface.get_width() / 2,
+                                                            self.surface.get_height() * 0.13)))
+            self.color = color
 
         self.dying = False
         self.death_time = 0
@@ -162,10 +174,6 @@ class Map:
                                               unbreakable=True)),
             3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color", self.sprite_loader,
                                               unbreakable=True)),
-            2: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "animated_color", self.sprite_loader,
-                                              color_anim="white-red")),
-            1: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "animated_color", self.sprite_loader,
-                                              color_anim="white-red")),
             10: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "grass", self.sprite_loader)),
             11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone", self.sprite_loader)),
             12: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "beacon", self.sprite_loader,
@@ -173,8 +181,10 @@ class Map:
             13: (lambda map_, x, y: Canon(map_.app, vec(x, y))),
             "moon_sand": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_sand", self.sprite_loader,
                                                         color=pg.Color(150, 150, 150))),
-            "neon_block": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon_block", self.sprite_loader,
-                                                         color=pg.Color(0, 0, 0)))
+            "neon_block": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon", self.sprite_loader,
+                                                         color=pg.Color(255, 182, 193))),
+            "neon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon_spike", self.sprite_loader,
+                                                         color=pg.Color(255, 182, 193))),
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {
@@ -320,11 +330,25 @@ class Map:
             return self.generate_new_chunk(id_), True
 
     def get_transition(self, player):
-        chk = self.get_current_chunk(vec(player.rect.center))
+        pos = vec(player.rect.topleft)
+        chk = self.get_current_chunk(pos)
         if chk in self.transitions:
-            return self.transitions[chk], self.get_index_from_co(vec(player.rect.center))[1] / self.chunk_size.x
+            return self.transitions[chk], ((pos.x - chk[0] * self.tile_size.x * self.chunk_size.x) / (self.tile_size.x * self.chunk_size.x))
         else:
             return "none", 0.0
+
+    def get_environment(self, player):
+        def after(transition_name):
+            return transition_name.split("_")[-1]
+
+        if self.get_transition(player)[0] == "none":
+            chk1 = self.get_chunk(vec(player.rect.topleft))
+            for chk2, transition in reversed(self.transitions.items()):
+                if chk1[0] > chk2[0]:
+                    return after(transition)
+            return "normal"
+        else:
+            return self.get_transition(player)[0]
 
     def generate_new_chunk(self, id_) -> list[Object2d]:
 
