@@ -283,13 +283,13 @@ class Game:
                         if moving_object.jumping:
                             moving_object.gravity = 0
             else:
-                if vel.y >= 0:
+                if vel.y > 0:
                     if abs(c_rect.top - n_rect.bottom) <= vel.y:
                         moving_object.vel.y = c_rect.top - rect.bottom
                         if moving_object.jumping:
                             moving_object.gravity = 0
                         break
-                elif vel.y < 0:
+                elif vel.y <= 0:
                     if abs(c_rect.bottom - n_rect.top) <= - vel.y and moving_object.gravity < 0:
                         moving_object.vel.y = c_rect.bottom - rect.top
                         moving_object.gravity = 0
@@ -428,10 +428,39 @@ class Game:
                                                            pos + vector))
 
     def draw_background(self):
-        self.screen.fill((135, 206, 235))
+        environment = self.map.get_environment(self.player)
+        transition = self.map.get_transition(self.player)
 
-        if self.game_mode in self.backgrounds:
-            self.backgrounds[self.game_mode].draw(self.screen, self.cam_dxy)
+        if environment == "normal":
+            self.screen.fill((135, 206, 235))
+        elif environment == "transition_to_moon":
+            self.screen.fill((135 + (80 - 135) * transition[1], 206 + (80 - 206) * transition[1],
+                              235 + (80 - 235) * transition[1]))
+        elif environment == "moon":
+            self.screen.fill((80, 80, 80))
+        elif environment == "transition_to_neon":
+            self.screen.fill((80 - 80 * transition[1], 80 - 80 * transition[1], 80 - 80 * transition[1]))
+        elif environment == "transition_to_normal":
+            self.screen.fill((135 * transition[1], 206 * transition[1], 235 * transition[1]))
+
+        if "transition" in environment:
+            match environment:
+                case "transition_to_moon":
+                    environment = "normal"
+                case "transition_to_neon":
+                    environment = "moon"
+                case "transition_to_normal":
+                    environment = "normal"
+
+        if environment in self.backgrounds:
+            if transition[0] in ['none', 'transition_to_neon']:
+                self.backgrounds[environment].draw(self.screen, self.cam_dxy)
+            elif transition[0] == 'transition_to_normal':
+                self.backgrounds[environment].draw(self.screen, self.cam_dxy,
+                                                   offset=vec(-(1 - transition[1]) * self.screen.get_width() * 2.5, 0))
+            elif transition[0] == 'transition_to_moon':
+                self.backgrounds[environment].draw(self.screen, self.cam_dxy,
+                                                   offset=vec(-transition[1] * self.screen.get_width() * 2.5, 0))
 
         for ui_object in self.ui_objects:
             if ui_object.IN_BACKGROUND:

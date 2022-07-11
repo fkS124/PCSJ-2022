@@ -32,6 +32,7 @@ class CloudSprite(Object2d):
 
     def __init__(self, pos: tuple[int, int]):
         super(CloudSprite, self).__init__(pos, (100, 100))
+        self.offset = vec(0, 0)
         self.vel = random.randrange(1, 3)
         self.length = random.random()+2
         self.scrolling = random.randint(2, 10)
@@ -48,8 +49,8 @@ class CloudSprite(Object2d):
     def update(self, camera_dxy: vec = vec(0, 0)):
         self.x += self.vel - camera_dxy.x / self.scrolling
         self.rect.x = round(self.x)
-        if self.rect.x + self.perspective_x > self.w:
-            self.x = -self.rect.w - abs(self.perspective_x)
+        if self.rect.x + self.perspective_x + self.offset.x > self.w:
+            self.x = -self.rect.w - abs(self.perspective_x) - self.offset.x
         if self.rect.y > self.h:
             self.rect.bottom = 0
         elif self.rect.bottom < 0:
@@ -57,6 +58,7 @@ class CloudSprite(Object2d):
 
     def draw(self, display: pg.Surface, offset=vec(0, 0)) -> None:
         self.w, self.h = display.get_size()
+        self.offset = offset
         return super(CloudSprite, self).draw(display, offset)
 
 
@@ -65,10 +67,10 @@ class Background:
     def __init__(self, n_layers: int = 4):
         self.layers: list[Object2d] = []
 
-    def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0)):
+    def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0), offset: vec = vec(0, 0)):
         for sprite in self.layers:
             sprite.update(camera_dxy)
-            sprite.draw(display)
+            sprite.draw(display, offset)
 
 
 class NormalBackground(Background):
@@ -81,11 +83,11 @@ class NormalBackground(Background):
                 CloudSprite((randint(0, _*200), 100*_+80))
                 )
 
-    def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0)):
+    def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0), offset: vec = vec(0, 0)):
         vanishing_point = vec(display.get_size())/2
         for sprite in self.layers:
             sprite.update(camera_dxy)
-            pos = vec(sprite.rect.topleft)
+            pos = vec(sprite.rect.topleft) + offset
             w, h = sprite.rect.w, sprite.rect.h
 
             vector = vanishing_point - pos
@@ -123,5 +125,5 @@ class NormalBackground(Background):
                     filled_polygon(display, (pos, pos + point[way[-i + 1]],
                                              pos + point[way[-i + 1]] + vectors[way[-i + 1]],
                                              pos + vector), colors[way[i]])
-            sprite.draw(display)
+            sprite.draw(display, offset=offset)
 
