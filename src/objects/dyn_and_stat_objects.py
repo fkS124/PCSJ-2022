@@ -31,7 +31,8 @@ class DynamicObject(StaticObject):
 
     def update(self):
         # apply delta time (framerate independence)
-        self.vel *= self.app.dt * self.app.FPS
+        self.vel *= 60 / self.app.clock.get_fps()
+        self.vel = vec(round(self.vel.x), round(self.vel.y))
         # apply the collision algorithm
         self.app.game.collision_algorithm(self)
 

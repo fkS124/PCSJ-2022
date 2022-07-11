@@ -76,11 +76,14 @@ class Player(UserObject):
         self.bind(event="key", func=self.jump, args=(), key=pg.K_SPACE)
 
     def logic(self):
+        self.DONT_DRAW = self.dead
+        self.DONT_DRAW_PERSPECTIVE = self.dead
+
         self.surface.fill(self.player_color)
 
         if self.jumping:
             self.vel.y = self.gravity
-            self.gravity += 1
+            self.gravity += 1 * 60 / self.app.clock.get_fps()
         if self.dashing:
             if pg.time.get_ticks() - self.last_frame > self.delay_frames:
                 self.app.game.add_object(Trail(self.rect.topleft, self.rect.size, self.surface.get_at((0, 0)),

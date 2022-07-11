@@ -1,5 +1,5 @@
 import pygame as pg
-from typing import Callable, Union
+from . import vec
 from copy import copy
 
 
@@ -186,6 +186,7 @@ class Button(UiObject):
                  click_func_args: tuple = None,
                  hover_func=None,
                  hover_func_args: tuple = None,
+                 shadow: tuple = None
                  ):
         super(Button, self).__init__(pos, size, True)
 
@@ -205,15 +206,21 @@ class Button(UiObject):
 
         self.border_radius = border_radius
 
+        self.shadow = shadow
+
+        self.press_time = 0
+        self.press_delay = 25
+
     def handle_events(self, event: pg.event.Event):
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == self.button and self.rect.collidepoint(event.pos):
-                self.exec_func("up", "click")
-                self.state = "click"
-        elif event.type == pg.MOUSEBUTTONUP:
-            if event.button == self.button and self.rect.collidepoint(event.pos):
                 self.exec_func("down", "click")
-                self.state = "hover" if self.rect.collidepoint(event.pos) else "normal"
+                self.state = "click"
+                self.press_time = pg.time.get_ticks()
+        elif event.type == pg.MOUSEBUTTONUP and (pg.time.get_ticks() - self.press_time > self.press_delay):
+            if event.button == self.button and self.rect.collidepoint(event.pos):
+                self.exec_func("up", "click")
+            self.state = "hover" if self.rect.collidepoint(event.pos) else "normal"
 
     def exec_func(self, click_type: str, exec_type: str):
         if self.exec_type == click_type:
@@ -237,6 +244,11 @@ class Button(UiObject):
         color = self.colors[self.state]
         text = self.texts[self.state]
 
+        if self.shadow is not None and self.border_radius is not None:
+            pg.draw.rect(display, (0, 0, 0), self.rect.move(self.shadow), border_radius=self.border_radius[0])
+        elif self.shadow is not None:
+            pg.draw.rect(display, (0, 0, 0), self.rect.move(self.shadow))
+
         if self.border_radius is not None:
             pg.draw.rect(self.surface, color, [0, 0, *self.surface.get_size()],
                          border_top_left_radius=self.border_radius[0],
@@ -245,5 +257,19 @@ class Button(UiObject):
                          border_bottom_right_radius=self.border_radius[3])
         else:
             pg.draw.rect(self.surface, color, [0, 0, *self.surface.get_size()])
+        if hasattr(text, "shadow_surf"):
+            self.surface.blit(text.shadow_surf, text.shadow_surf.get_rect(
+                center=(self.rect.w / 2 + text.shadow_rect.x - text.rect.x,
+                        self.rect.h / 2 + text.shadow_rect.y - text.rect.y)))
         self.surface.blit(text.surface, text.surface.get_rect(center=(self.rect.w / 2, self.rect.h / 2)))
-        display.blit(self.surface, self.rect)
+
+        print(self.state, self.shadow)
+        if self.state != "click" or self.shadow is None:
+            display.blit(self.surface, self.rect)
+        else:
+            if (dxy := (pg.time.get_ticks() - self.press_time) / self.press_delay) <= 1:
+                display.blit(self.surface, self.rect.move(
+                    vec(self.shadow) * dxy
+                ))
+            else:
+                display.blit(self.surface, self.rect.move(self.shadow))

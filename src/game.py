@@ -183,7 +183,7 @@ class Game:
         elif self.camera_following:
             if (distance := looking_point.distance_to(self.camera_looking_at)) > 5:
                 self.cam_dxy = ((looking_point - self.camera_looking_at).normalize() *
-                                self.camera_vel * distance / 100) * self.app.dt * self.app.FPS
+                                self.camera_vel * distance / 100) * 60 / self.app.clock.get_fps()
                 if self.camera_limits is None:
                     self.camera_looking_at += self.cam_dxy
                 else:
@@ -297,9 +297,12 @@ class Game:
 
         if event.type == pg.KEYDOWN:
             if event.key == 13:
-                for key, beacon in self.beacons.items():
-                    if beacon[0].pressed:
-                        self.beacons_funcs[key]()
+                if not self.player.dead:
+                    for key, beacon in self.beacons.items():
+                        if beacon[0].pressed:
+                            self.beacons_funcs[key]()
+                else:
+                    self.go_back_to_menu()
             elif event.key == pg.K_ESCAPE:
                 self.go_back_to_menu()
 
@@ -417,19 +420,20 @@ class Game:
         fonts = pg.font.Font("assets/fonts/DISTROB_.ttf", 25), pg.font.Font("assets/fonts/DISTROB_.ttf", 80)
         self.ui_objects = []
         self.ui_objects.extend((BlackLayer((0, 0), self.screen.get_size()),
-                                Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7)-100),
+                                Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7)-50),
                                      fonts[1], "You died !", pg.Color(255, 0, 0), shadow_=(2, 2), centered=True))),
         self.ui_objects[-1].FIXED = True
         self.ui_objects[-1].IN_BACKGROUND = False
-        self.ui_objects.append(Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7)),
+        self.ui_objects.append(Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7 + 50)),
                                     fonts[0], f"Your score : {-1}", pg.Color(255, 255, 255), centered=True))
         # TODO : put the real score
         self.ui_objects[-1].FIXED = True
         self.ui_objects[-1].IN_BACKGROUND = False
         self.ui_objects.append(Button(
-            (self.screen.get_width() // 2 - 150, int(self.screen.get_height() // 2)),
-            (300, 100), Text((0, 0), fonts[0], "Respawn", pg.Color(0, 0, 0), shadow_=(2, 2)),
-            click_func=self.go_back_to_menu, normal_color=pg.Color(255, 205, 60), hover_color=pg.Color(240, 190, 45)
+            (self.screen.get_width() // 2 - 150, int(self.screen.get_height() // 2 + 50)),
+            (300, 100), Text((0, 0), fonts[0], "Respawn (Enter)", pg.Color(255, 255, 255), shadow_=(2, 2)),
+            click_func=self.go_back_to_menu, normal_color=pg.Color(255, 205, 60), hover_color=pg.Color(240, 190, 45),
+            border_radius=(8, 8, 8, 8), shadow=(5, 5), exec_type="up"
         ))
 
     def kill_player(self):
@@ -524,8 +528,9 @@ class Game:
                 ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
 
         # DEATH CONDITIONS --------------------
-        if self.player.rect.y > 1160:
+        if self.player.rect.y > 1160 and not self.player.dead:
             self.kill_player()
-        for monster in self.monsters:
-            if monster.rect.colliderect(self.player.rect):
-                self.kill_player()
+        if not self.player.dead:
+            for monster in self.monsters:
+                if monster.rect.colliderect(self.player.rect):
+                    self.kill_player()

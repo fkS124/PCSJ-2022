@@ -107,6 +107,7 @@ class TileSprite(StaticObject):
 
         return super().update()
 
+
 class Map:
 
     ignore_neighbour = [0, 4]
