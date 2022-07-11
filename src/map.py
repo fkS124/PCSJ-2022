@@ -1,8 +1,8 @@
 import pygame as pg
 from copy import copy
 from math import floor
-from random import choice
-from .dimensions import NormalDimension
+from random import choice, randint
+from .dimensions import NormalDimension, MoonDimension, NeonDimension
 from .objects import StaticObject, vec, Object2d, Monster, Canon
 
 
@@ -47,7 +47,8 @@ class TileSprite(StaticObject):
     """
     special_color_set: dict[str, dict[str, pg.Color]] = {
         "stone": {"default": pg.Color(110, 110, 110)},
-        "grass": {"default": pg.Color(124, 94, 66), "top": pg.Color(0, 200, 50)}
+        "grass": {"default": pg.Color(124, 94, 66), "top": pg.Color(0, 200, 50)},
+        "moon_sand": {"default": pg.Color(150, 150, 150), "top": pg.Color(125, 140, 130)}
     }
 
     def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(37, 31, 77),
@@ -110,12 +111,13 @@ class TileSprite(StaticObject):
 
 class Map:
 
-    ignore_neighbour = [0, 4]
+    ignore_neighbour = [0, 4, "monster", 13]
     g = 10
     s = 11
     b = 12
     m = "monster"
     c = 13
+    S = "moon_sand"
 
     menu_map = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -140,7 +142,9 @@ class Map:
                     [0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, m, 0, 0, 0, 0, 0, s, c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g]]
     dimensions = {
-        "normal": NormalDimension
+        "normal": NormalDimension,
+        "moon": MoonDimension,
+        "neon": NeonDimension
     }
 
     def __init__(self, app):
@@ -154,9 +158,6 @@ class Map:
         self.chunk_size = vec(15, 11)
 
         self.translate = {
-            # 3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "star", self.sprite_loader)),
-            # 2: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon", self.sprite_loader)),
-            # 1: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color", self.sprite_loader)),
             4: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "spike", self.sprite_loader,
                                               unbreakable=True)),
             3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color", self.sprite_loader,
@@ -169,7 +170,11 @@ class Map:
             11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone", self.sprite_loader)),
             12: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "beacon", self.sprite_loader,
                                                color=pg.Color(150, 150, 0))),
-            13: (lambda map_, x, y: Canon(map_.app, vec(x, y)))
+            13: (lambda map_, x, y: Canon(map_.app, vec(x, y))),
+            "moon_sand": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_sand", self.sprite_loader,
+                                                        color=pg.Color(150, 150, 150))),
+            "neon_block": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon_block", self.sprite_loader,
+                                                         color=pg.Color(0, 0, 0)))
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {
@@ -181,6 +186,10 @@ class Map:
         }
         self.generated_chunks = {}
         self.menu = False
+        self.n_chunks = 0
+        self.n_chunk_before_switch = 2
+        self.dimension = "normal"
+        self.transitions = {}
 
     @staticmethod
     def collide_spike_player(player, spike: TileSprite):
@@ -200,6 +209,7 @@ class Map:
         }
         self.generated_chunks = {}
 
+        self.n_chunks = 0
         self.menu = True
         self.chunk_size = vec(32, 11)
         return self.generate_new_chunk("menu")
@@ -215,6 +225,8 @@ class Map:
         self.generated_chunks = {}
         self.menu = False
         self.chunk_size = vec(34, 15)
+        self.dimension = "normal"
+        self.n_chunks = 0
 
     def get_index_from_co(self, pos: vec):
         chunk_id = floor(pos.x / (self.chunk_size.x * self.tile_size.x)), \
@@ -268,7 +280,7 @@ class Map:
             if (new_id := (chunk_id_x + 1, chunk_id_y)) in self.chunks:
                 return self.chunks[new_id][row][0]  not in self.ignore_neighbour
 
-        if 0 < row + translate[direction][0] < self.chunk_size.y and 0 < col + translate[direction][1] < self.chunk_size.x:
+        if 0 <= row + translate[direction][0] < self.chunk_size.y and 0 <= col + translate[direction][1] < self.chunk_size.x:
             row += translate[direction][0]
             col += translate[direction][1]
             return self.chunks[(chunk_id_x, chunk_id_y)][row][col] not in self.ignore_neighbour
@@ -307,7 +319,17 @@ class Map:
         else:
             return self.generate_new_chunk(id_), True
 
+    def get_transition(self, player):
+        chk = self.get_current_chunk(vec(player.rect.center))
+        if chk in self.transitions:
+            return self.transitions[chk], self.get_index_from_co(vec(player.rect.center))[1] / self.chunk_size.x
+        else:
+            return "none", 0.0
+
     def generate_new_chunk(self, id_) -> list[Object2d]:
+
+        chosen_preset = None
+        last_dim = copy(self.dimension)
 
         if id_ == "menu":
             output = self.translate_chunk(id_, special_key="menu")
@@ -317,14 +339,31 @@ class Map:
             elif self.vertical_only and id_[0] != 0:
                 return []
 
+            if self.n_chunks > self.n_chunk_before_switch:
+                self.n_chunks = 0
+                match last_dim:
+                    case "normal":
+                        self.dimension = "moon"
+                    case "moon":
+                        self.dimension = "neon"
+                    case "neon":
+                        self.dimension = "normal"
+                    case _:
+                        self.dimension = "normal"
+                chosen_preset = self.dimensions[last_dim].transition_to[self.dimension]
+
             if id_ not in self.chunks:
+                self.n_chunks += 1
                 if self.menu:
                     self.chunks[id_] = copy(self.menu_map_gen)
                 else:
-                    dimension = self.dimensions[self.app.game.game_mode]
+                    dimension = self.dimensions[last_dim]
                     if self.horizontal_only:
                         last_preset = self.presets.get((id_[0]-1, id_[1]))
-                        chosen_preset = choice(dimension.following[last_preset])
+                        if chosen_preset is None:
+                            chosen_preset = choice(dimension.following[last_preset])
+                        else:
+                            self.transitions[id_] = chosen_preset
                         self.chunks[id_] = getattr(dimension, chosen_preset)
                         self.presets[id_] = chosen_preset
             output = self.translate_chunk(id_)

@@ -263,7 +263,6 @@ class Button(UiObject):
                         self.rect.h / 2 + text.shadow_rect.y - text.rect.y)))
         self.surface.blit(text.surface, text.surface.get_rect(center=(self.rect.w / 2, self.rect.h / 2)))
 
-        print(self.state, self.shadow)
         if self.state != "click" or self.shadow is None:
             display.blit(self.surface, self.rect)
         else:
