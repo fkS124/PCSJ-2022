@@ -51,7 +51,7 @@ class TileSprite(StaticObject):
         "moon_sand": {"default": pg.Color(150, 150, 150), "top": pg.Color(125, 140, 130)}
     }
 
-    def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(37, 31, 77),
+    def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(255, 0, 0),
                  unbreakable=False):
         super(TileSprite, self).__init__(pos, pg.Surface(size, pg.SRCALPHA))
         self.unbreakable = unbreakable
@@ -61,6 +61,8 @@ class TileSprite(StaticObject):
         self.color = color
         self.tag = tag
         self.style = "neon" if "neon" in tag else "normal"
+        if tag == "moon_spike":
+            print(self.tag)
         if tag in self.sprite_loader.sprites:
             self.surface = self.sprite_loader.sprites[tag]
         elif tag in self.special_color_set:
@@ -78,7 +80,6 @@ class TileSprite(StaticObject):
             self.tag = "spike"
             self.DONT_COLLIDE = True
             self.surface = pg.Surface(size, pg.SRCALPHA)
-            self.color = (255, 0, 0)
             pg.draw.polygon(self.surface, self.color, ((0, self.surface.get_height()),
                                                        (self.surface.get_width(), self.surface.get_height()),
                                                        (self.surface.get_width() / 2,
@@ -90,10 +91,10 @@ class TileSprite(StaticObject):
             if self.tag != "spike":
                 self.surface.set_alpha(0)
             else:
-                pg.draw.polygon(self.surface, (0, 0, 0), ((0, self.surface.get_height()),
-                                                           (self.surface.get_width(), self.surface.get_height()),
-                                                           (self.surface.get_width() / 2,
-                                                            self.surface.get_height() * 0.13)))
+                pg.draw.polygon(self.surface, self.color, ((0, self.surface.get_height()),
+                                                          (self.surface.get_width(), self.surface.get_height()),
+                                                          (self.surface.get_width() / 2,
+                                                           self.surface.get_height() * 0.13)))
             self.color = color
 
         self.dying = False
@@ -123,7 +124,7 @@ class TileSprite(StaticObject):
 
 class Map:
 
-    ignore_neighbour = [0, 4, "monster", 13]
+    ignore_neighbour = [0, 4, "monster", 13, "moon_spike"]
     g = 10
     s = 11
     b = 12
@@ -184,7 +185,9 @@ class Map:
             "neon_block": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon", self.sprite_loader,
                                                          color=pg.Color(255, 182, 193))),
             "neon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon_spike", self.sprite_loader,
-                                                         color=pg.Color(255, 182, 193))),
+                                                         color=pg.Color(0, 0, 0))),
+            "moon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_spike", self.sprite_loader,
+                                                         color=pg.Color(125, 100, 125)))
         }
 
         self.chunks: dict[tuple[int, int], list[list[int, ...]], ...] = {

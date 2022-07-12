@@ -67,6 +67,9 @@ class Player(UserObject):
 
         self.mask = pg.mask.from_surface(self.surface)
 
+        self.dash_sound = pg.mixer.Sound("assets/sounds/SON_DASH.mp3")
+        self.dash_sound.set_volume(0.1)
+
     def do_binding(self):
         self.reset_binds()
         self.bind(event="key-pressed", func=self.move, args="left", key=self.KEYS["Left"])
@@ -111,6 +114,7 @@ class Player(UserObject):
 
     def dash(self):
         if self.dash_available and not self.dead:
+            self.dash_sound.play()
             self.dash_vel = self.directions[self.direction] * self.dash_base_vel
             self.dash_available = False
             self.dashing = True

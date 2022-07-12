@@ -82,6 +82,8 @@ class Game:
         self.objects: list[Object2d | Player] = [Player(app, (0, 0))]
         self.monsters: list[Monster] = []
         self.player = self.objects[0]
+        self.player_death_sound = pg.mixer.Sound("assets/sounds/SON_DEATH.mp3")
+        self.player_death_sound.set_volume(0.5)
         self.drawing_objects = [self.player]
         loading_thread.loaded["Objects"] = True
 
@@ -138,7 +140,7 @@ class Game:
             'Haendel_Sarabande.mp3',
             'Prokofiev_Dance_Knights.mp3'
         ]
-        pg.mixer.music.load('assets/music/'+self.musics[0]),
+        pg.mixer.music.load('assets/music/'+self.musics[0])
         pg.mixer.music.play()
         self.music_index = 1
         loading_thread.loaded["Background"] = True
@@ -232,6 +234,8 @@ class Game:
             looking_point = vec(self.player.rect.center)
             if looking_point.y > 760:
                 looking_point.y = 760
+            elif looking_point.y < 100:
+                looking_point.y = 100
             self.camera_fixed_y = None
             self.camera_fixed_x = None
 
@@ -390,7 +394,8 @@ class Game:
             length3d = obj.length3d if hasattr(obj, "length3d") else 10
 
             if hasattr(obj, "tag") and obj.tag == "spike":
-                func = polygon if not (hasattr(obj, "style") and obj.style == "neon") else neon_polygon
+                # print(obj, obj.tag, obj.style)
+                func = neon_polygon if hasattr(obj, "style") and obj.style == "neon" else polygon
 
                 pos_left = vec(obj.rect.topleft) + vec(0, obj.surface.get_height()) + self.scroll
                 pos_right = vec(obj.rect.topleft) + vec(obj.surface.get_width(), obj.surface.get_height()) + self.scroll
@@ -592,6 +597,7 @@ class Game:
 
     def kill_player(self):
         self.player.dead = True
+        self.player_death_sound.play()
         self.init_death_screen()
 
     def routine(self):
@@ -630,6 +636,8 @@ class Game:
             translations = [(0, 0), (1, 0), (-1, 0)]
         elif self.map.vertical_only:
             translations = [(0, 0), (0, -1), (0, 1)]
+        if self.map.get_environment(self.player) == "moon" and current_chunk[1] == -1:
+            translations.extend([(0, 1), (-1, 1), (1, 1)])
         for translation in translations:
             working_chunk = self.map.get_current_chunk_objects(current_chunk[0] + translation[0],
                                                                current_chunk[1] + translation[1])
@@ -653,7 +661,7 @@ class Game:
         # Update all objects, and add them to the draw
         for obj in self.objects:
             upd = obj.update()
-            if hasattr(obj, "tag") and obj.tag == "spike":
+            if hasattr(obj, "tag") and obj.tag == "spike" and not self.player.dead:
                 if self.map.collide_spike_player(self.player, obj):
                     self.kill_player()
 
@@ -704,6 +712,8 @@ class Game:
 
         # DEATH CONDITIONS --------------------
         if self.player.rect.y > 1160 and not self.player.dead:
+            self.kill_player()
+        elif self.player.rect.y < - 100 and not self.player.dead and self.map.get_environment(self.player) == "neon":
             self.kill_player()
         if not self.player.dead:
             for monster in self.monsters:
