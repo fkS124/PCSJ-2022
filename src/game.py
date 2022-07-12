@@ -104,7 +104,6 @@ class Game:
 
         # SCRAP ----------------------------
         self.texts = []
-
         # CAMERA ---------------------------
         self.scroll = vec(0, 0)
         self.camera_free = False
@@ -127,6 +126,21 @@ class Game:
             "normal": NormalBackground(),
             "moon": MoonBackground()
         }
+        self.musics = [
+            'Satie_Gymnopédie.mp3',
+            'Chopin_Waltz_in_A_minor.mp3',
+            'Chopin_Nocturne_C.mp3',
+            'Beethoven_Moonlight_Sonata.mp3',
+            'Beethoven_Sonata_Tempest.mp3',
+            'Debussy_Clair_de_Lune.mp3',
+            'Chopin_Fantaisie_Impromptu.mp3',
+            'Brahms_Hungarian_Dance.mp3',
+            'Haendel_Sarabande.mp3',
+            'Prokofiev_Dance_Knights.mp3'
+        ]
+        pg.mixer.music.load('assets/music/'+self.musics[0]),
+        pg.mixer.music.play()
+        self.music_index = 1
         loading_thread.loaded["Background"] = True
 
         # UI OBJECTS -------------------------
@@ -147,6 +161,9 @@ class Game:
         self.reset_object_lists()
         self.map.quit_menu()
         self.map.init_game()
+        self.music_index = 1
+        pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
+        pg.mixer.music.play()
 
     def reset_object_lists(self):
         self.objects = [self.player]
@@ -429,6 +446,7 @@ class Game:
                                                            pos + vector))
 
     def draw_background(self):
+        print(pg.mixer.music.get_pos())
         environment = self.map.get_environment(self.player)
         transition = self.map.get_transition(self.player)
 
@@ -454,14 +472,38 @@ class Game:
                     environment = "normal"
 
         if environment in self.backgrounds:
-            if transition[0] in ['none', 'transition_to_neon']:
+            if transition[0] == 'transition_to_neon':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy)
+                print(transition[0], transition[1], self.music_index)
+                if transition[1] <= 0.5:
+                    pg.mixer.music.set_volume(-transition[1]*2+1)
+                elif self.music_index % 3 == 2:
+                    self.music_index += 1
+                    pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
+                    pg.mixer.music.set_volume(1)
+                    pg.mixer.music.play()
             elif transition[0] == 'transition_to_normal':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-(1 - transition[1]) * self.screen.get_width() * 2.5, 0))
+                if transition[1] <= 0.5:
+                    pg.mixer.music.set_volume(-transition[1]*2+1)
+                elif self.music_index % 3 == 0:
+                    self.music_index += 1
+                    pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
+                    pg.mixer.music.set_volume(1)
+                    pg.mixer.music.play()
             elif transition[0] == 'transition_to_moon':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-transition[1] * self.screen.get_width() * 2.5, 0))
+                if transition[1] <= 0.5:
+                    pg.mixer.music.set_volume(-transition[1]*2+1)
+                elif self.music_index % 3 == 1:
+                    self.music_index += 1
+                    pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
+                    pg.mixer.music.set_volume(1)
+                    pg.mixer.music.play()
+            else:
+                self.backgrounds[environment].draw(self.screen, self.cam_dxy)
 
         for ui_object in self.ui_objects:
             if ui_object.IN_BACKGROUND:
