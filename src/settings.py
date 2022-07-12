@@ -114,7 +114,8 @@ class SettingsMenu:
                 self.app.preset_wasd()
         self.app.game.player.do_binding()
         self.app.game.init_ui_menu()
-        self.app.game.scroll = self.app.game.get_scroll()
+        # TODO: solve bug where the camera goes crazy
+        self.app.game.scroll = vec(0, 0)
         # TODO: Sound ON/OFF
 
     def get_selected_preset(self):

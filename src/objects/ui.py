@@ -223,12 +223,15 @@ class Button(UiObject):
         self.press_time = 0
         self.press_delay = 25
 
+        self.click_sound = pg.mixer.Sound("assets/sounds/SON_BOUTON.mp3")
+
     def handle_events(self, event: pg.event.Event):
         if event.type == pg.MOUSEBUTTONDOWN:
             if event.button == self.button and self.rect.collidepoint(event.pos):
                 self.exec_func("down", "click")
                 self.state = "click"
                 self.press_time = pg.time.get_ticks()
+                self.click_sound.play()
         elif event.type == pg.MOUSEBUTTONUP and (pg.time.get_ticks() - self.press_time > self.press_delay):
             if event.button == self.button and self.rect.collidepoint(event.pos):
                 self.exec_func("up", "click")
