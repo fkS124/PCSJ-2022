@@ -36,7 +36,7 @@ class CloudSprite(Object2d):
         self.vel = random.randrange(1, 3)
         self.length = random.random()+2
         self.scrolling = random.randint(2, 10)
-        self.surface = pg.Surface((random.randrange(200, 600), random.randrange(40, 80)))
+        self.surface = pg.Surface((random.randint(200, 600), random.randint(40, 80)))
         color = 225
         self.color = (color, color, color)
         self.surface.fill(self.color)
@@ -73,15 +73,52 @@ class Background:
             sprite.draw(display, offset)
 
 
+class StarSprite(Object2d):
+
+    def __init__(self, pos: tuple[int, int]):
+        super(StarSprite, self).__init__(pos, (100, 100))
+        self.offset = vec(0, 0)
+        self.scrolling = random.randint(2, 10)
+        self.size = randint(2, 15)
+        self.surface = pg.Surface((self.size, self.size))
+        self.surface.fill((255, 255, 255))
+        self.rect = self.surface.get_rect(center=pos)
+        self.x = self.rect.x
+        self.perspective_x = 0
+
+        self.w, self.h = 1920, 1080
+
+    def update(self, camera_dxy: vec = vec(0, 0)):
+        self.x -= camera_dxy.x / self.scrolling
+        self.rect.x = round(self.x)
+        if self.rect.x + self.perspective_x + self.offset.x > self.w:
+            self.x = -self.rect.w - abs(self.perspective_x) - self.offset.x
+        if self.rect.y > self.h:
+            self.rect.bottom = 0
+        elif self.rect.bottom < 0:
+            self.rect.y = self.h
+
+    def draw(self, display: pg.Surface, offset=vec(0, 0)) -> None:
+        self.w, self.h = display.get_size()
+        self.offset = offset
+        return super(StarSprite, self).draw(display, offset)
+
+
+class MoonBackground(Background):
+
+    def __init__(self):
+        super(MoonBackground, self).__init__()
+        for _ in range(30):
+            self.layers.append(StarSprite((randint(0, 1400), randint(0, 700))))
+
+
 class NormalBackground(Background):
 
     def __init__(self):
-        super(NormalBackground, self).__init__(3)
+        super(NormalBackground, self).__init__()
 
         for _ in range(7):
-            self.layers.append(
-                CloudSprite((randint(0, _*200), 100*_+80))
-                )
+            self.layers.append(CloudSprite((randint(0, 1400), 100*_+80)))
 
     def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0), offset: vec = vec(0, 0)):
         vanishing_point = vec(display.get_size())/2
