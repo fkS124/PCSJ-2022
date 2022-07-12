@@ -57,10 +57,6 @@ def scale(img: pg.Surface, k: float):
     return resize(img.get_width() * k, img.get_height() * k, img)
 
 
-def draw_star(pos, size, angle):
-    output_pos = pg.Surface((size, size), pg.SRCALPHA)
-
-
 def change(color: tuple[int, ...] | pg.Color, degree: float) -> pg.Color:
     new_color = [color[0] * degree, color[1] * degree, color[2] * degree]
     for idx, col in enumerate(new_color):
@@ -104,6 +100,10 @@ class Game:
 
         # SCRAP ----------------------------
         self.texts = []
+
+        self.max_x = 0
+        self.score = 0
+
         # CAMERA ---------------------------
         self.scroll = vec(0, 0)
         self.camera_free = False
@@ -152,6 +152,35 @@ class Game:
             "Settings": self.start_settings,
             "Quit": self._quit
         }
+
+        title_font = pg.font.Font("assets/fonts/DISTROB_.ttf", 50)
+        subtitle_font = pg.font.Font("assets/fonts/DISTRO__.ttf", 30)
+        self.transition_texts: dict[str, list[UiObject]] = {
+            "transition_to_moon": [
+                Text((self.screen.get_width() // 2, self.screen.get_height() // 4), title_font,
+                     "Transitioning to the moon dimension...", pg.Color(255, 255, 255), shadow_=(2, 2),
+                     centered=True),
+                Text((self.screen.get_width() // 2, int(self.screen.get_height() / 3)), subtitle_font,
+                     "In this dimension, the gravity force is divided by 2!", pg.Color(255, 255, 255), shadow_=(2, 2),
+                     centered=True)
+            ],
+            "transition_to_neon": [
+                Text((self.screen.get_width() // 2, self.screen.get_height() // 4), title_font,
+                     "Transitioning to the neon dimension...", pg.Color(255, 255, 255), shadow_=(2, 2),
+                     centered=True),
+                Text((self.screen.get_width() // 2, int(self.screen.get_height() / 3)), subtitle_font,
+                     "In this dimension, the gravity is inverted!", pg.Color(255, 255, 255), shadow_=(2, 2),
+                     centered=True)
+            ],
+            "transition_to_normal": [
+                Text((self.screen.get_width() // 2, self.screen.get_height() // 4), title_font,
+                     "Transitioning to the normal dimension...", pg.Color(255, 255, 255), shadow_=(2, 2),
+                     centered=True),
+                Text((self.screen.get_width() // 2, int(self.screen.get_height() / 3)), subtitle_font,
+                     "Everything will go back to normal.", pg.Color(255, 255, 255), shadow_=(2, 2),
+                     centered=True)
+            ]
+        }
         loading_thread.loaded["UI"] = True
 
     def start_game(self):
@@ -164,6 +193,8 @@ class Game:
         self.music_index = 1
         pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
         pg.mixer.music.play()
+        self.max_x = self.player.rect.x
+        self.score = 0
 
     def reset_object_lists(self):
         self.objects = [self.player]
@@ -182,6 +213,9 @@ class Game:
         self.init_ui_menu()
         self.game_mode = "menu"
         self.player.rect.center = (530, 650)
+        pg.mixer.music.load('assets/music/' + self.musics[0]),
+        pg.mixer.music.play()
+        self.music_index = 1
 
     def start_settings(self):
         self.app.settings()
@@ -445,15 +479,30 @@ class Game:
                                                            pos + point[way[-i + 1]] + vectors[way[-i + 1]],
                                                            pos + vector))
 
+    def show_transparent_text(self, texts, degree):
+        for txt in texts:
+            surf1, surf2 = txt.surface, txt.shadow_surf
+            alpha = 255
+            if degree < 0.10:
+                alpha = 255 * degree * 10
+            elif degree < 0.9:
+                alpha = 255
+            else:
+                alpha = 255 * (1 - degree) * 10
+            surf1.set_alpha(alpha)
+            surf2.set_alpha(alpha)
+            self.screen.blit(surf2, txt.shadow_rect)
+            self.screen.blit(surf1, txt.rect)
+
     def draw_background(self):
-        print(pg.mixer.music.get_pos())
+        print(pg.mixer.music.get_busy())
         environment = self.map.get_environment(self.player)
         transition = self.map.get_transition(self.player)
 
         if environment == "normal":
             self.screen.fill((135, 206, 235))
         elif environment == "transition_to_moon":
-            self.screen.fill((135 + (19 - 135) * transition[1], 206 + (17 - 206) * transition[1],
+            self.screen.fill((135 + (29 - 135) * transition[1], 206 + (17 - 206) * transition[1],
                               235 + (53 - 235) * transition[1]))
         elif environment == "moon":
             self.screen.fill((29, 17, 53))
@@ -472,16 +521,8 @@ class Game:
                     environment = "normal"
 
         if environment in self.backgrounds:
-            if transition[0] == 'transition_to_neon':
+            if transition[0] == 'none':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy)
-                print(transition[0], transition[1], self.music_index)
-                if transition[1] <= 0.5:
-                    pg.mixer.music.set_volume(-transition[1]*2+1)
-                elif self.music_index % 3 == 2:
-                    self.music_index += 1
-                    pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
-                    pg.mixer.music.set_volume(1)
-                    pg.mixer.music.play()
             elif transition[0] == 'transition_to_normal':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-(1 - transition[1]) * self.screen.get_width() * 2.5, 0))
@@ -489,7 +530,7 @@ class Game:
                     pg.mixer.music.set_volume(-transition[1]*2+1)
                 elif self.music_index % 3 == 0:
                     self.music_index += 1
-                    pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
+                    pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
                     pg.mixer.music.set_volume(1)
                     pg.mixer.music.play()
             elif transition[0] == 'transition_to_moon':
@@ -499,11 +540,28 @@ class Game:
                     pg.mixer.music.set_volume(-transition[1]*2+1)
                 elif self.music_index % 3 == 1:
                     self.music_index += 1
-                    pg.mixer.music.load('assets/music/'+self.musics[self.music_index])
+                    pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
                     pg.mixer.music.set_volume(1)
                     pg.mixer.music.play()
+                self.backgrounds[environment].draw(self.screen, self.cam_dxy,
+                                                   offset=vec(-transition[1] * self.screen.get_width() * 2.5, 0))
+                self.backgrounds["moon"].update_alpha(transition[1])
+                self.backgrounds["moon"].draw(self.screen, self.cam_dxy)
+                self.show_transparent_text(self.transition_texts[transition[0]], transition[1])
+            elif transition[0] == "transition_to_neon":
+                self.backgrounds["moon"].update_alpha(1 - transition[1])
+                self.backgrounds["moon"].draw(self.screen, self.cam_dxy)
+                if transition[1] <= 0.5:
+                    pg.mixer.music.set_volume(-transition[1]*2+1)
+                elif self.music_index % 3 == 2:
+                    self.music_index += 1
+                    pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
+                    pg.mixer.music.set_volume(1)
+                    pg.mixer.music.play()
+                self.show_transparent_text(self.transition_texts[transition[0]], transition[1])
             else:
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy)
+                self.show_transparent_text(self.transition_texts[transition[0]], transition[1])
 
         for ui_object in self.ui_objects:
             if ui_object.IN_BACKGROUND:
@@ -521,8 +579,7 @@ class Game:
         self.ui_objects[-1].FIXED = True
         self.ui_objects[-1].IN_BACKGROUND = False
         self.ui_objects.append(Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7 + 50)),
-                                    fonts[0], f"Your score : {-1}", pg.Color(255, 255, 255), centered=True))
-        # TODO : put the real score
+                                    fonts[0], f"Your score : {self.score}", pg.Color(255, 255, 255), centered=True))
         self.ui_objects[-1].FIXED = True
         self.ui_objects[-1].IN_BACKGROUND = False
         self.ui_objects.append(Button(
@@ -540,6 +597,10 @@ class Game:
         self.screen = self.app.screen
         # self.game_mode = self.map.get_environment(self.player)
         # print(self.player.rect.center, self.player.vel.x)
+        if not self.map.menu:
+            if self.player.rect.x > self.max_x:
+                self.score += (self.player.rect.x - self.max_x) / 10
+                self.max_x = self.player.rect.x
 
         # update the scroll value (for camera)
         self.draw_background()

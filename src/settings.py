@@ -20,15 +20,11 @@ def switch_on_off(button: Button, settings_instance):
         if button.tag != "none":
             match button.tag:
                 case "on_wasd":
-                    if settings_instance.ui_objects[4].on:
-                        switch_on_off(settings_instance.ui_objects[4], settings_instance)
                     if settings_instance.ui_objects[3].on:
                         switch_on_off(settings_instance.ui_objects[3], settings_instance)
                 case "on_zqsd":
                     if settings_instance.ui_objects[2].on:
                         switch_on_off(settings_instance.ui_objects[2], settings_instance)
-                    if settings_instance.ui_objects[4].on:
-                        switch_on_off(settings_instance.ui_objects[4], settings_instance)
 
     else:
         button.colors = {
@@ -79,9 +75,15 @@ class SettingsMenu:
                    on=self.on_zqsd, off=not self.on_zqsd, click_func=switch_on_off, click_func_args=("self", self),
                    centered=True, shadow=(5, 5), border_radius=(8, 8, 8, 8), exec_type="up", tag="on_zqsd",
                    normal_color=pg.Color(255, 0, 0) if not self.on_zqsd else pg.Color(0, 255, 0)),
-            # TODO: Sound ON/OFF
-            Button((self.w // 2, self.h * 5 / 7), (500, self.h / 10), Text((0, 0), subtitles_font,
+            # TODO: Sound and Musics ON/OFF
+            Button((self.w // 2 - 130, self.h * 5 / 7), (240, self.h / 10), Text((0, 0), subtitles_font,
                    f"Sounds : {'On' if True else 'Off'}", pg.Color(255, 255, 255), shadow_=(2, 2)),
+                   on=True, off=False, click_func=switch_on_off, click_func_args=("self", self),
+                   centered=True, shadow=(5, 5), border_radius=(8, 8, 8, 8), exec_type="up", tag="on_arrows",
+                   normal_color=pg.Color(255, 0, 0) if not True else pg.Color(0, 255, 0)),
+            Button((self.w // 2 + 130, self.h * 5 / 7), (240, self.h / 10), Text((0, 0), subtitles_font,
+                                                                                 f"Music : {'On' if True else 'Off'}",
+                                                                                 pg.Color(255, 255, 255), shadow_=(2, 2)),
                    on=True, off=False, click_func=switch_on_off, click_func_args=("self", self),
                    centered=True, shadow=(5, 5), border_radius=(8, 8, 8, 8), exec_type="up", tag="on_arrows",
                    normal_color=pg.Color(255, 0, 0) if not True else pg.Color(0, 255, 0)),
@@ -116,10 +118,11 @@ class SettingsMenu:
         # TODO: Sound ON/OFF
 
     def get_selected_preset(self):
-        buttons = self.ui_objects[1:4]
+        buttons = self.ui_objects[2:4]
         for button in buttons:
             if button.on:
                 return button.tag[3:]
+        return buttons[0].tag[3:]
 
     def run(self, background: pg.Surface):
         self.running = True
@@ -137,6 +140,13 @@ class SettingsMenu:
             self.app.screen.fill((0, 0, 0))
             self.app.screen.blit(background, (0, 0))
             self.app.screen.blit(self.black_layer, (0, 0))
+
+            buttons = self.ui_objects[2:4]
+            for button in buttons:
+                if button.on:
+                    break
+            else:
+                switch_on_off(buttons[0], self)
 
             for ui_object in self.ui_objects:
                 if hasattr(ui_object, "update"):

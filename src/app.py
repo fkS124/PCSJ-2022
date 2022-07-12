@@ -29,7 +29,9 @@ class LoadingThread(Thread):
 class App:
     def __init__(self) -> None:
         if not pg.get_init():
+            pg.mixer.pre_init()
             pg.init()
+            pg.mixer.init()
 
         self.window_flags = pg.SCALED
         self.window_size = 1400, 860

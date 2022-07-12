@@ -1,9 +1,7 @@
-from random import triangular
 import pygame as pg
 
 from .auto_and_user_objects import UserObject
 from .dyn_and_stat_objects import StaticObject
-from .constants import GRAVITY
 
 vec = pg.math.Vector2
 

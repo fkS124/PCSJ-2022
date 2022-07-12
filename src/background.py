@@ -1,7 +1,7 @@
 import random
 
 import pygame as pg
-from random import randint, gauss
+from random import randint
 from .objects import Object2d, vec
 from pygame.gfxdraw import filled_polygon
 
@@ -51,10 +51,6 @@ class CloudSprite(Object2d):
         self.rect.x = round(self.x)
         if self.rect.x + self.perspective_x + self.offset.x > self.w:
             self.x = -self.rect.w - abs(self.perspective_x) - self.offset.x
-        if self.rect.y > self.h:
-            self.rect.bottom = 0
-        elif self.rect.bottom < 0:
-            self.rect.y = self.h
 
     def draw(self, display: pg.Surface, offset=vec(0, 0)) -> None:
         self.w, self.h = display.get_size()
@@ -65,10 +61,10 @@ class CloudSprite(Object2d):
 class Background:
 
     def __init__(self, n_layers: int = 4):
-        self.layers: list[Object2d] = []
+        self.sprites: list[Object2d] = []
 
     def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0), offset: vec = vec(0, 0)):
-        for sprite in self.layers:
+        for sprite in self.sprites:
             sprite.update(camera_dxy)
             sprite.draw(display, offset)
 
@@ -86,21 +82,16 @@ class StarSprite(Object2d):
         self.x = self.rect.x
         self.perspective_x = 0
 
-        self.w, self.h = 1920, 1080
+        self.w, self.h = 1400, 1080
 
     def update(self, camera_dxy: vec = vec(0, 0)):
         self.x -= camera_dxy.x / self.scrolling
         self.rect.x = round(self.x)
-        if self.rect.x + self.perspective_x + self.offset.x > self.w:
-            self.x = -self.rect.w - abs(self.perspective_x) - self.offset.x
-        if self.rect.y > self.h:
-            self.rect.bottom = 0
-        elif self.rect.bottom < 0:
-            self.rect.y = self.h
+        if self.rect.right < 0:
+            self.x = self.w
 
     def draw(self, display: pg.Surface, offset=vec(0, 0)) -> None:
         self.w, self.h = display.get_size()
-        self.offset = offset
         return super(StarSprite, self).draw(display, offset)
 
 
@@ -109,7 +100,11 @@ class MoonBackground(Background):
     def __init__(self):
         super(MoonBackground, self).__init__()
         for _ in range(30):
-            self.layers.append(StarSprite((randint(0, 1400), randint(0, 700))))
+            self.sprites.append(StarSprite((randint(0, 1400), randint(0, 700))))
+
+    def update_alpha(self, degree):
+        for sprite in self.sprites:
+            sprite.surface.set_alpha(255 * degree)
 
 
 class NormalBackground(Background):
@@ -118,11 +113,11 @@ class NormalBackground(Background):
         super(NormalBackground, self).__init__()
 
         for _ in range(7):
-            self.layers.append(CloudSprite((randint(0, 1400), 100*_+80)))
+            self.sprites.append(CloudSprite((randint(0, 1400), 100*_+80)))
 
     def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0), offset: vec = vec(0, 0)):
         vanishing_point = vec(display.get_size())/2
-        for sprite in self.layers:
+        for sprite in self.sprites:
             sprite.update(camera_dxy)
             pos = vec(sprite.rect.topleft) + offset
             w, h = sprite.rect.w, sprite.rect.h
