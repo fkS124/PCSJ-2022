@@ -36,7 +36,7 @@ class App:
         self.vsync = True
         if len(size := pg.display.get_desktop_sizes()) == 1:
             w, h = size[0]
-            if w < self.window_size[0] or h < self.window_flags[1]:
+            if w < self.window_size[0] or h < self.window_size[1]:
                 self.window_flags = pg.SCALED | pg.FULLSCREEN
 
         self.screen = pg.display.set_mode(self.window_size, self.window_flags, vsync=self.vsync)
