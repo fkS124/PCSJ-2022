@@ -96,6 +96,9 @@ class Text(UiObject):
             self.surface = resize(self.surface, self.resize_)
         elif hasattr(self, "scale_"):
             self.surface = s_scale(self.surface, self.scale_)
+        if hasattr(self, "shadow_surf"):
+            self.shadow_surf = self.font.render(new_text, True, (0, 0, 0))
+            self.shadow_rect = self.rect.move(self.shadow_rect.x - self.rect.x, self.shadow_rect.y - self.rect.y)
         self.rect = self.surface.get_rect(topleft=self.rect.topleft)
         self.original_img = self.surface
 
@@ -186,9 +189,16 @@ class Button(UiObject):
                  click_func_args: tuple = None,
                  hover_func=None,
                  hover_func_args: tuple = None,
-                 shadow: tuple = None
+                 shadow: tuple = None,
+                 on: bool = True,
+                 off: bool = False,
+                 centered: bool = False,
+                 tag: str = "none"
                  ):
         super(Button, self).__init__(pos, size, True)
+        self.tag = tag
+        if centered:
+            self.rect.center = pos
 
         self.state = "normal"
         self.button = button
@@ -207,6 +217,8 @@ class Button(UiObject):
         self.border_radius = border_radius
 
         self.shadow = shadow
+        self.on = on
+        self.off = off
 
         self.press_time = 0
         self.press_delay = 25
@@ -226,7 +238,8 @@ class Button(UiObject):
         if self.exec_type == click_type:
             if self.func[exec_type] is not None:
                 if self.args[exec_type] is not None:
-                    self.func[exec_type](*self.args[exec_type])
+                    args = [arg if arg != "self" else self for arg in self.args[exec_type]]
+                    self.func[exec_type](*args)
                 else:
                     self.func[exec_type]()
 

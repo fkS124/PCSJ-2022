@@ -37,7 +37,7 @@ def polygon(display: pg.Surface, color, points: list[vec, ...] | tuple[vec, ...]
 
 
 def neon_polygon(display: pg.Surface, color, points: list[vec, ...] | tuple[vec, ...]):
-    pg.draw.polygon(display, (0, 0, 0), points)
+    filled_polygon(display, points, (0, 0, 0))
     aapolygon(display, points, (255, 255, 255))
 
 
@@ -166,7 +166,7 @@ class Game:
         self.player.rect.center = (530, 650)
 
     def start_settings(self):
-        pass
+        self.app.settings()
 
     def _quit(self):
         self.app.quit_()
@@ -494,6 +494,7 @@ class Game:
         self.init_death_screen()
 
     def routine(self):
+        self.screen = self.app.screen
         # self.game_mode = self.map.get_environment(self.player)
         # print(self.player.rect.center, self.player.vel.x)
 

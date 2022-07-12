@@ -70,6 +70,7 @@ class Player(UserObject):
         self.mask = pg.mask.from_surface(self.surface)
 
     def do_binding(self):
+        self.reset_binds()
         self.bind(event="key-pressed", func=self.move, args="left", key=self.KEYS["Left"])
         self.bind(event="key-pressed", func=self.move, args="right", key=self.KEYS["Right"])
         self.bind(event="key", func=self.jump, args=(), key=self.KEYS["Jump"])

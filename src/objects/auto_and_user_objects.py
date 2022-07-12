@@ -50,6 +50,10 @@ class UserObject(DynamicObject):
         self._binds_p: list[dict[str: Any]] = []
         self.listening = True  # if it's set to False, then it will stop applying the controls
 
+    def reset_binds(self):
+        self._binds = []
+        self._binds_p = []
+
     def logic(self):
         pass
 

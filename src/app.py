@@ -2,7 +2,8 @@ import pygame as pg
 
 from threading import Thread
 from .game import Game
-from math import floor
+from .objects import vec
+from .settings import SettingsMenu
 
 
 class LoadingThread(Thread):
@@ -29,8 +30,12 @@ class App:
     def __init__(self) -> None:
         if not pg.get_init():
             pg.init()
-        
-        self.screen = pg.display.set_mode((1400, 860), pg.SCALED, vsync=True)
+
+        self.window_flags = pg.SCALED
+        self.window_size = 1400, 860
+        self.vsync = True
+
+        self.screen = pg.display.set_mode(self.window_size, self.window_flags, vsync=self.vsync)
     #   if pg.display.Info().current_w + 100 > self.screen.get_width() \
     #       or pg.display.Info().current_h + 100 > self.screen.get_height():
     #    self.screen = pg.display.set_mode((1400, 860), pg.SCALED | pg.FULLSCREEN, vsync=True)
@@ -42,7 +47,10 @@ class App:
                              "zqsd": self.preset_zqsd, "ZQSD": self.preset_zqsd,
                              None: self.preset_wasd}
 
-        # framerate
+        self.key_preset = "Arrow Keys"
+        self.settings_menu = None
+
+        # frame rate
         self.clock = pg.time.Clock()
         self.FPS = 60
         self.dt = 0
@@ -53,12 +61,14 @@ class App:
         raise SystemExit
 
     def preset_wasd(self):
+        self.key_preset = "WASD"
         self.game.player.KEYS["Left"] = pg.K_a
         self.game.player.KEYS["Right"] = pg.K_d
         self.game.player.KEYS["Jump"] = pg.K_w
         self.game.player.KEYS["Dash"] = pg.K_LSHIFT
 
     def preset_zqsd(self):
+        self.key_preset = "ZQSD"
         self.game.player.KEYS["Left"] = pg.K_q
         self.game.player.KEYS["Right"] = pg.K_d
         self.game.player.KEYS["Jump"] = pg.K_z
@@ -109,7 +119,7 @@ class App:
                     output = f"{key}: ERROR -> {thread.exception}"
                     color = (255, 0, 0)
                 rendered = font.render(output, True, color)
-                rect2 = rendered.get_rect(topleft=(rect.bottomleft+pg.Vector2(2, 50 + dy)))
+                rect2 = rendered.get_rect(topleft=(vec(rect.bottomleft)+pg.Vector2(2, 50 + dy)))
                 self.screen.blit(rendered, rect2)
                 if not item:
                     break
@@ -117,6 +127,9 @@ class App:
 
             pg.display.update()
             self.clock.tick(self.FPS)
+
+    def settings(self):
+        self.settings_menu.run(self.screen.copy())
 
     def run(self, special_arg=None):
         self.loading_screen()
@@ -126,6 +139,7 @@ class App:
             self.game.init_ui_menu()
 
         self.game.objects[0].do_binding()
+        self.settings_menu = SettingsMenu(self)
 
         while self.running:
 
