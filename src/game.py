@@ -414,7 +414,7 @@ class Game:
 
                 if vector_top[1] > 0 and (
                         vector_top[1] / vector_top[0] > 1.7 if vector_top[0] > 0 else vector_top[1] / vector_top[
-                            0] < -1.7):
+                            0] < -1.7) and not self.map.has_neighbour('bottom', obj):
                     func(self.screen, change(color, 0.75),
                          (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
                     continue
@@ -422,13 +422,15 @@ class Game:
                 vectors = sorted(vectors, key=lambda x: x[0] ** 2 + x[1] ** 2)
 
                 if vectors[0] == vector_left:
-                    func(self.screen, change(color, 0.75),
-                         (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    if not self.map.has_neighbour('bottom', obj):
+                        func(self.screen, change(color, 0.75),
+                             (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
                     func(self.screen, change(color, 0.5),
                          (pos_left, pos_left + vector_left, pos_top + vector_top, pos_top))
                 elif vectors[0] == vector_right:
-                    func(self.screen, change(color, 0.75),
-                         (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
+                    if not self.map.has_neighbour('bottom', obj):
+                        func(self.screen, change(color, 0.75),
+                             (pos_left, pos_left + vector_left, pos_right + vector_right, pos_right))
                     func(self.screen, change(color, 0.8),
                          (pos_right, pos_right + vector_right, pos_top + vector_top, pos_top))
                 else:
@@ -495,7 +497,6 @@ class Game:
             self.screen.blit(surf1, txt.rect)
 
     def draw_background(self):
-        print(pg.mixer.music.get_busy())
         environment = self.map.get_environment(self.player)
         transition = self.map.get_transition(self.player)
 
