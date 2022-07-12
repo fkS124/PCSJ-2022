@@ -19,7 +19,7 @@ from .objects import (
     Particle,
     Monster
 )
-from .background import Background, NormalBackground
+from .background import Background, NormalBackground, MoonBackground
 from .map import Map, TileSprite
 
 
@@ -124,7 +124,8 @@ class Game:
         # BACKGROUND ------------------------
         self.backgrounds: dict[str, Background] = {
             "menu": NormalBackground(),
-            "normal": NormalBackground()
+            "normal": NormalBackground(),
+            "moon": MoonBackground()
         }
         loading_thread.loaded["Background"] = True
 
@@ -434,12 +435,12 @@ class Game:
         if environment == "normal":
             self.screen.fill((135, 206, 235))
         elif environment == "transition_to_moon":
-            self.screen.fill((135 + (80 - 135) * transition[1], 206 + (80 - 206) * transition[1],
-                              235 + (80 - 235) * transition[1]))
+            self.screen.fill((135 + (19 - 135) * transition[1], 206 + (17 - 206) * transition[1],
+                              235 + (53 - 235) * transition[1]))
         elif environment == "moon":
-            self.screen.fill((80, 80, 80))
+            self.screen.fill((29, 17, 53))
         elif environment == "transition_to_neon":
-            self.screen.fill((80 - 80 * transition[1], 80 - 80 * transition[1], 80 - 80 * transition[1]))
+            self.screen.fill((29 - 29 * transition[1], 17 - 17 * transition[1], 53 - 53 * transition[1]))
         elif environment == "transition_to_normal":
             self.screen.fill((135 * transition[1], 206 * transition[1], 235 * transition[1]))
 
@@ -574,7 +575,6 @@ class Game:
 
         # draw all see able objects
         for obj in self.drawing_objects:
-            obj.draw(self.screen, self.scroll)
             if (hasattr(obj, "tag") and obj.tag == "neon") or self.map.get_environment(self.player) == "neon":
                 if obj.tag != "spike":
                     neon_polygon(self.screen, obj.color, [
@@ -589,6 +589,8 @@ class Game:
                         vec(obj.rect.bottomright) + self.scroll,
                         vec(obj.rect.x + obj.rect.w / 2, obj.rect.y + obj.rect.h * 0.13) + self.scroll
                     ])
+            else:
+                obj.draw(self.screen, self.scroll)
 
         # draw the UI (the UiObjects not contained in the Background)
         for ui_object in self.ui_objects:
