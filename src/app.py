@@ -52,6 +52,7 @@ class App:
         self.clock = pg.time.Clock()
         self.FPS = 60
         self.dt = 0
+        self.vsync = True
 
         self.play_sound = True
         self.play_music = True
