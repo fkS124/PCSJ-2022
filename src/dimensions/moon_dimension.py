@@ -21,7 +21,7 @@ class MoonDimension:
         "preset7": ["preset1", "preset2", "preset3", "preset4", "preset5", "preset6", "preset8", "preset9"],
         "preset8": ["preset1", "preset2", "preset3", "preset4", "preset5", "preset6", "preset7", "preset9"],
         "preset9": ["preset1", "preset2", "preset3", "preset4", "preset5", "preset6", "preset7", "preset8"],
-        "empty_preset": ["preset1", "preset2", "preset3", "preset4", "preset5", "preset6"]
+        "empty_preset": ["preset1", "preset2", "preset3", "preset4", "preset5", "preset6", "preset7", "preset8", "preset9"]
     }
 
     empty_preset = [
@@ -197,7 +197,7 @@ class MoonDimension:
         [0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, S, 0, 0, 0, 0, S, S, S, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, S, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, s, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, S, 0, 0, 0, c, 0, 0, 0, S, c, 0, 0, 0, S, m, 0, 0, 0, 0, 0, S, 0, 0, 0, 0, s, s, s, 0, 0, 0],
         [S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S]
