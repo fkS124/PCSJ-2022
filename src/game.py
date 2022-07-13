@@ -105,6 +105,9 @@ class Game:
 
         self.max_x = 0
         self.score = 0
+        score_font = pg.font.Font("assets/fonts/DISTROB_.ttf", 40)
+        self.score_text = Text((self.screen.get_width() // 2, 50), score_font, "Score : 0", pg.Color(255, 255, 255),
+                               shadow_=(2, 2), centered=True)
 
         # CAMERA ---------------------------
         self.scroll = vec(0, 0)
@@ -147,6 +150,10 @@ class Game:
 
         # UI OBJECTS -------------------------
         self.ui_objects: list[UiObject] = []
+
+        self.chad_easter_egg = self.player.pg_chad
+        self.chad_easter_egg_rect = self.chad_easter_egg.get_rect()
+
         self.init_ui_menu()
         self.beacons: dict[str, list[TileSprite | Title | bool]] = {}
         self.beacons_funcs: dict[str, Callable] = {
@@ -183,6 +190,7 @@ class Game:
                      centered=True)
             ]
         }
+
         loading_thread.loaded["UI"] = True
 
     def start_game(self):
@@ -244,7 +252,8 @@ class Game:
         elif self.camera_following:
             if (distance := looking_point.distance_to(self.camera_looking_at)) > 5:
                 self.cam_dxy = ((looking_point - self.camera_looking_at).normalize() *
-                                self.camera_vel * distance / 100) * 60 / self.app.clock.get_fps()
+                                self.camera_vel * distance / 100) * 60 / (fps if (fps := self.app.clock.get_fps()) > 15
+                                                                          else 60)
                 if self.camera_limits is None:
                     self.camera_looking_at += self.cam_dxy
                 else:
@@ -272,10 +281,11 @@ class Game:
                  [(200, 480), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
                  [(200, 520), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
                  [(800, 440), "Go this way ->", "bold"],
+                 [(800, 500), "(Select with the ENTER key)"],
                  [(-12200, 340), "Looking for the easter egg huh ?", "bold"],
                  [(-20000, 340), "Really determined aren't you ?", "bold"],
                  [(-28000, 340), "Your determination will pay off...", "bold"]]
-        # TODO: place the easter egg around x=-35000
+        self.chad_easter_egg_rect.topleft = (-35000, 440)
         titles = [[(1520, 440), "Play", "title_bold"],
                   [(1800, 440), "Settings", "title_bold"],
                   [(2150, 440), "Quit", "title_bold"]]
@@ -290,7 +300,7 @@ class Game:
                                          big_scale=1.5, scaling_delay=120, shadow_=(3, 3)))
 
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
-        self.beacons = {dat[0]: [dat[1], self.ui_objects[9 + idx], False] for idx, dat in
+        self.beacons = {dat[0]: [dat[1], self.ui_objects[10 + idx], False] for idx, dat in
                         enumerate(zip(["Play", "Settings", "Quit"], all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
@@ -532,23 +542,25 @@ class Game:
             elif transition[0] == 'transition_to_normal':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-(1 - transition[1]) * self.screen.get_width() * 2.5, 0))
-                if transition[1] <= 0.5:
-                    pg.mixer.music.set_volume(-transition[1]*2+1)
-                elif self.music_index % 3 == 0:
-                    self.music_index += 1
-                    pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
-                    pg.mixer.music.set_volume(1)
-                    pg.mixer.music.play()
+                if self.app.play_music:
+                    if transition[1] <= 0.5:
+                        pg.mixer.music.set_volume(-transition[1]*2+1)
+                    elif self.music_index % 3 == 0:
+                        self.music_index += 1
+                        pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
+                        pg.mixer.music.set_volume(1)
+                        pg.mixer.music.play()
             elif transition[0] == 'transition_to_moon':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-transition[1] * self.screen.get_width() * 2.5, 0))
-                if transition[1] <= 0.5:
-                    pg.mixer.music.set_volume(-transition[1]*2+1)
-                elif self.music_index % 3 == 1:
-                    self.music_index += 1
-                    pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
-                    pg.mixer.music.set_volume(1)
-                    pg.mixer.music.play()
+                if self.app.play_music:
+                    if transition[1] <= 0.5:
+                        pg.mixer.music.set_volume(-transition[1]*2+1)
+                    elif self.music_index % 3 == 1:
+                        self.music_index += 1
+                        pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
+                        pg.mixer.music.set_volume(1)
+                        pg.mixer.music.play()
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-transition[1] * self.screen.get_width() * 2.5, 0))
                 self.backgrounds["moon"].update_alpha(transition[1])
@@ -557,13 +569,14 @@ class Game:
             elif transition[0] == "transition_to_neon":
                 self.backgrounds["moon"].update_alpha(1 - transition[1])
                 self.backgrounds["moon"].draw(self.screen, self.cam_dxy)
-                if transition[1] <= 0.5:
-                    pg.mixer.music.set_volume(-transition[1]*2+1)
-                elif self.music_index % 3 == 2:
-                    self.music_index += 1
-                    pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
-                    pg.mixer.music.set_volume(1)
-                    pg.mixer.music.play()
+                if self.app.play_music:
+                    if transition[1] <= 0.5:
+                        pg.mixer.music.set_volume(-transition[1]*2+1)
+                    elif self.music_index % 3 == 2:
+                        self.music_index += 1
+                        pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
+                        pg.mixer.music.set_volume(1)
+                        pg.mixer.music.play()
                 self.show_transparent_text(self.transition_texts[transition[0]], transition[1])
             else:
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy)
@@ -601,6 +614,7 @@ class Game:
         self.init_death_screen()
 
     def routine(self):
+        # print(self.scroll)
         self.screen = self.app.screen
         # self.game_mode = self.map.get_environment(self.player)
         # print(self.player.rect.center, self.player.vel.x)
@@ -708,7 +722,22 @@ class Game:
         # draw the UI (the UiObjects not contained in the Background)
         for ui_object in self.ui_objects:
             if not ui_object.IN_BACKGROUND:
-                ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
+                if isinstance(ui_object, Button):
+                    ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll,
+                                   play_sound=self.app.play_sound)
+                else:
+                    ui_object.draw(self.screen, offset=pg.Vector2(0, 0) if ui_object.FIXED else self.scroll)
+
+        if not self.player.chad:
+            if self.map.menu:
+                if self.player.rect.colliderect(self.chad_easter_egg_rect):
+                    self.player.chad = True
+                self.app.screen.blit(self.chad_easter_egg,
+                                     self.chad_easter_egg_rect.topleft + self.scroll)
+
+        if not self.map.menu:
+            self.score_text.modify_content(f"Score : {round(self.score)}")
+            self.score_text.draw(self.app.screen)
 
         # DEATH CONDITIONS --------------------
         if self.player.rect.y > 1160 and not self.player.dead:

@@ -68,7 +68,16 @@ class Player(UserObject):
         self.mask = pg.mask.from_surface(self.surface)
 
         self.dash_sound = pg.mixer.Sound("assets/sounds/SON_DASH.mp3")
-        self.dash_sound.set_volume(0.1)
+        self.dash_sound.set_volume(0.20)
+
+        self.jump_sound = pg.mixer.Sound("assets/sounds/SON_JUMP.mp3")
+        self.jump_sound.set_volume(0.25)
+
+        self.pg_chad = pg.image.load("assets/sprites/PG_CHAD.png").convert()
+        self.pg_chad_alpha = pg.image.load("assets/sprites/PG_CHAD.png").convert_alpha()
+        self.pg_chad_alpha = pg.transform.smoothscale(self.pg_chad_alpha, (80, 80))
+        self.pg_chad = pg.transform.smoothscale(self.pg_chad, (80, 80))
+        self.chad = False
 
     def do_binding(self):
         self.reset_binds()
@@ -83,12 +92,20 @@ class Player(UserObject):
         self.DONT_DRAW_PERSPECTIVE = self.dead
 
         if self.app.game.map.get_environment(self) == "neon":
-            self.surface.fill((0, 0, 0))
+            if not self.chad:
+                self.surface.fill((0, 0, 0))
+            else:
+                self.surface = self.pg_chad_alpha
             self.d_gravity = -1
         elif self.app.game.map.get_environment(self) == "moon":
             self.d_gravity = 0.5
+            if self.chad:
+                self.surface = self.pg_chad
         else:
-            self.surface.fill(self.color)
+            if self.chad:
+                self.surface = self.pg_chad
+            else:
+                self.surface.fill(self.color)
             self.d_gravity = 1
 
         if self.jumping:
@@ -109,12 +126,16 @@ class Player(UserObject):
 
     def jump(self):
         if not self.jumping and not self.dead:
+            if self.app.play_sound:
+                self.jump_sound.play()
+                self.jump_sound.fadeout(300)
             self.jumping = True
             self.gravity = - 24 if self.app.game.map.get_environment(self) != "neon" else 24
 
     def dash(self):
         if self.dash_available and not self.dead:
-            self.dash_sound.play()
+            if self.app.play_sound:
+                self.dash_sound.play()
             self.dash_vel = self.directions[self.direction] * self.dash_base_vel
             self.dash_available = False
             self.dashing = True

@@ -42,6 +42,8 @@ class App:
                 self.window_flags = pg.SCALED | pg.FULLSCREEN
 
         self.screen = pg.display.set_mode(self.window_size, self.window_flags, vsync=self.vsync)
+        pg.display.set_caption("Cube's hidden dimensions")
+        pg.display.set_icon(pg.image.load("assets/sprites/icon.png"))
     
         self.running = True
         self.game: Game | None = None
@@ -58,6 +60,9 @@ class App:
         self.clock = pg.time.Clock()
         self.FPS = 60
         self.dt = 0
+
+        self.play_sound = True
+        self.play_music = True
 
     @staticmethod
     def quit_():
@@ -154,6 +159,5 @@ class App:
                 self.game.handle_events(event)
 
             self.game.routine()
-            pg.display.set_caption(f"{self.clock.get_fps()}")
             pg.display.update()
             self.dt = self.clock.tick(self.FPS) / 1000

@@ -75,18 +75,17 @@ class SettingsMenu:
                    on=self.on_zqsd, off=not self.on_zqsd, click_func=switch_on_off, click_func_args=("self", self),
                    centered=True, shadow=(5, 5), border_radius=(8, 8, 8, 8), exec_type="up", tag="on_zqsd",
                    normal_color=pg.Color(255, 0, 0) if not self.on_zqsd else pg.Color(0, 255, 0)),
-            # TODO: Sound and Musics ON/OFF
             Button((self.w // 2 - 130, self.h * 5 / 7), (240, self.h / 10), Text((0, 0), subtitles_font,
-                   f"Sounds : {'On' if True else 'Off'}", pg.Color(255, 255, 255), shadow_=(2, 2)),
-                   on=True, off=False, click_func=switch_on_off, click_func_args=("self", self),
+                   f"Sounds : {'On' if self.app.play_sound else 'Off'}", pg.Color(255, 255, 255), shadow_=(2, 2)),
+                   on=self.app.play_sound, off=not self.app.play_sound, click_func=switch_on_off, click_func_args=("self", self),
                    centered=True, shadow=(5, 5), border_radius=(8, 8, 8, 8), exec_type="up", tag="on_arrows",
-                   normal_color=pg.Color(255, 0, 0) if not True else pg.Color(0, 255, 0)),
+                   normal_color=pg.Color(255, 0, 0) if not self.app.play_sound else pg.Color(0, 255, 0)),
             Button((self.w // 2 + 130, self.h * 5 / 7), (240, self.h / 10), Text((0, 0), subtitles_font,
                                                                                  f"Music : {'On' if True else 'Off'}",
                                                                                  pg.Color(255, 255, 255), shadow_=(2, 2)),
-                   on=True, off=False, click_func=switch_on_off, click_func_args=("self", self),
+                   on=self.app.play_music, off=not self.app.play_music, click_func=switch_on_off, click_func_args=("self", self),
                    centered=True, shadow=(5, 5), border_radius=(8, 8, 8, 8), exec_type="up", tag="on_arrows",
-                   normal_color=pg.Color(255, 0, 0) if not True else pg.Color(0, 255, 0)),
+                   normal_color=pg.Color(255, 0, 0) if not self.app.play_music else pg.Color(0, 255, 0)),
             Button((self.w // 2, self.h * 6 / 7), (250, self.h / 12), Text((0, 0), subtitles_font,
                                                                            f"Quit Settings",
                                                                            pg.Color(255, 255, 255), shadow_=(2, 2)),
@@ -114,9 +113,11 @@ class SettingsMenu:
                 self.app.preset_wasd()
         self.app.game.player.do_binding()
         self.app.game.init_ui_menu()
-        # TODO: solve bug where the camera goes crazy
-        self.app.game.scroll = vec(0, 0)
-        # TODO: Sound ON/OFF
+
+        self.app.play_sound = self.ui_objects[4].on
+        self.app.play_music = self.ui_objects[5].on
+        if not self.app.play_music:
+            pg.mixer.music.unload()
 
     def get_selected_preset(self):
         buttons = self.ui_objects[2:4]
@@ -149,9 +150,22 @@ class SettingsMenu:
             else:
                 switch_on_off(buttons[0], self)
 
+            self.app.play_sound = self.ui_objects[4].on
+            self.app.play_music = self.ui_objects[5].on
+
+            if not self.app.play_music:
+                pg.mixer.music.unload()
+            elif not pg.mixer.music.get_busy():
+                pg.mixer.music.load('assets/music/' + self.app.game.musics[0])
+                pg.mixer.music.play()
+                self.app.game.music_index = 1
+
             for ui_object in self.ui_objects:
                 if hasattr(ui_object, "update"):
                     ui_object.update()
-                ui_object.draw(self.app.screen)
+                if isinstance(ui_object, Button):
+                    ui_object.draw(self.app.screen, play_sound=self.app.play_sound)
+                else:
+                    ui_object.draw(self.app.screen)
 
             pg.display.update()
