@@ -172,7 +172,7 @@ class Map:
         self.generated_chunks = {}
         self.menu = False
         self.n_chunks = 0
-        self.n_chunk_before_switch = 2
+        self.n_chunk_before_switch = 5
         self.dimension = "normal"
         self.transitions = {}
 

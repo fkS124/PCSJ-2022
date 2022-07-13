@@ -100,7 +100,7 @@ class MoonBackground(Background):
     def __init__(self):
         super(MoonBackground, self).__init__()
         for _ in range(30):
-            self.sprites.append(StarSprite((randint(0, 1400), randint(0, 700))))
+            self.sprites.append(StarSprite((randint(0, 1200), randint(0, 700))))
 
     def update_alpha(self, degree):
         for sprite in self.sprites:
@@ -112,8 +112,8 @@ class NormalBackground(Background):
     def __init__(self):
         super(NormalBackground, self).__init__()
 
-        for _ in range(7):
-            self.sprites.append(CloudSprite((randint(0, 1400), 100*_+80)))
+        for _ in range(5):
+            self.sprites.append(CloudSprite((randint(0, 1200), 100*_+50)))
 
     def draw(self, display: pg.Surface, camera_dxy: vec = vec(0, 0), offset: vec = vec(0, 0)):
         vanishing_point = vec(display.get_size())/2
