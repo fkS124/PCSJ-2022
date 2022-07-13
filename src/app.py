@@ -34,7 +34,7 @@ class App:
             pg.mixer.init()
 
         self.window_flags = pg.SCALED
-        self.window_size = 1400, 860
+        self.window_size = 1920, 1080
         self.vsync = True
         if len(size := pg.display.get_desktop_sizes()) == 1:
             w, h = size[0]

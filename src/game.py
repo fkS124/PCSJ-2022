@@ -405,7 +405,7 @@ class Game:
         vanishing_point = vec(self.screen.get_size()) / 2
         screen_rect = pg.Rect(-100, -100, self.screen.get_width() + 200, self.screen.get_height() + 200)
 
-        self.drawing_objects.sort(key=lambda x: (x.rect.centery, abs(x.rect.centerx-self.player.rect.x)), reverse=True)
+        self.drawing_objects.sort(key=lambda x: (abs(x.rect.centery-self.camera_looking_at[1]), abs(x.rect.centerx-self.camera_looking_at[0])), reverse=True)
         if self.player in self.drawing_objects:
             self.drawing_objects.remove(self.player)
             self.drawing_objects.append(self.player)
@@ -504,7 +504,7 @@ class Game:
                               'bottom': vector[1] > 0}
 
                 for i in range(0, 2):
-                    if (not self.map.has_neighbour(way[i], obj) or obj == self.player) and conditions[way[i]]:
+                    if (not self.map.has_neighbour(way[i], obj) or obj == self.player or obj in self.monsters) and conditions[way[i]]:
                         func(self.screen, colors[way[i]], (pos, pos + point[way[-i + 1]],
                                                            pos + point[way[-i + 1]] + vectors[way[-i + 1]],
                                                            pos + vector))
