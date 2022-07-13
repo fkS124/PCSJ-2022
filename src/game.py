@@ -570,6 +570,7 @@ class Game:
                         pg.mixer.music.load('assets/music/'+self.musics[min(self.music_index, len(self.musics)-1)])
                         pg.mixer.music.set_volume(1)
                         pg.mixer.music.play()
+                        self.player.vel_acc += 0.25
             elif transition[0] == 'transition_to_moon':
                 self.backgrounds[environment].draw(self.screen, self.cam_dxy,
                                                    offset=vec(-transition[1] * self.screen.get_width() * 2.5, 0))
@@ -637,7 +638,6 @@ class Game:
         # print(self.scroll)
         self.screen = self.app.screen
         # self.game_mode = self.map.get_environment(self.player)
-        print(self.player.rect.center, self.player.vel.x)
         if not self.map.menu:
             if self.player.rect.x > self.max_x:
                 self.score += (self.player.rect.x - self.max_x) / 10

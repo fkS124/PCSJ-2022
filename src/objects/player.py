@@ -38,6 +38,7 @@ class Player(UserObject):
         self.base_vel = 6
         self.directions = {"left": vec(-1, 0), "right": vec(1, 0)}
         self.direction = "right"
+        self.vel_acc = 1
 
         # Dash
         self.dashing = False
@@ -96,9 +97,9 @@ class Player(UserObject):
                 self.surface.fill((0, 0, 0))
             else:
                 self.surface = self.pg_chad_alpha
-            self.d_gravity = -5/8
+            self.d_gravity = -5/8 * self.vel_acc
         elif self.app.game.map.get_environment(self) == "moon":
-            self.d_gravity = 0.3
+            self.d_gravity = 0.3 * self.vel_acc
             if self.chad:
                 self.surface = self.pg_chad
         else:
@@ -106,17 +107,17 @@ class Player(UserObject):
                 self.surface = self.pg_chad
             else:
                 self.surface.fill(self.color)
-            self.d_gravity = 5/8
+            self.d_gravity = 5/8 * self.vel_acc
 
         if self.jumping:
-            self.vel.y = self.gravity
-            self.gravity += self.d_gravity * 60 / self.app.clock.get_fps()
+            self.vel.y = self.gravity #* self.vel_acc
+            self.gravity += self.d_gravity * 60 / self.app.clock.get_fps() * self.vel_acc
         if self.dashing:
             if pg.time.get_ticks() - self.last_frame > self.delay_frames:
                 self.app.game.add_object(Trail(self.rect.topleft, self.rect.size, self.surface.get_at((0, 0)),
                                                self.length_trail))
                 self.last_frame = pg.time.get_ticks()
-            self.vel += self.dash_vel
+            self.vel += self.dash_vel * self.vel_acc
             if pg.time.get_ticks() - self.dash_time > self.dash_duration:
                 self.dashing = False
 
@@ -130,7 +131,7 @@ class Player(UserObject):
                 self.jump_sound.play()
                 self.jump_sound.fadeout(300)
             self.jumping = True
-            self.gravity = - 15 if self.app.game.map.get_environment(self) != "neon" else 15
+            self.gravity = - 15 * self.vel_acc if self.app.game.map.get_environment(self) != "neon" else 15 * self.vel_acc
 
     def dash(self):
         if self.dash_available and not self.dead:
@@ -142,5 +143,5 @@ class Player(UserObject):
             self.dash_time = pg.time.get_ticks()
 
     def move(self, direction: str):
-        self.vel += self.directions[direction] * self.base_vel * (not self.dead)
+        self.vel += self.directions[direction] * self.base_vel * (not self.dead) * self.vel_acc
         self.direction = direction
