@@ -45,10 +45,10 @@ class Bullet(Monster):
 class Canon(StaticObject):
 
     def __init__(self, app, pos):
-        super(Canon, self).__init__(pos, pg.Surface((80, 80)))
+        super(Canon, self).__init__(pos, pg.Surface((50, 50)))
 
         self.app = app
-        self.surface = pg.Surface((50, 70))
+        self.surface = pg.Surface((30, 50))
         self.rect = self.surface.get_rect(center=self.rect.center)
         self.length3d = 15
         self.bullet_size = 15, 30

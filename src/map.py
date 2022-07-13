@@ -142,7 +142,7 @@ class Map:
         self.horizontal_only = True
         self.vertical_only = False
         self.app = app
-        self.tile_size = vec(80, 80)
+        self.tile_size = vec(50, 50)
         self.chunk_size = vec(15, 11)
 
         self.translate = {

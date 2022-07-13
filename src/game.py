@@ -94,7 +94,7 @@ class Game:
 
         # MAP ------------------------------
         self.map = Map(app)
-        self.player.rect.topleft = (530, 650)
+        self.player.rect.topleft = (-25, 300)
         menu_objects = self.map.generate_menu()
         for menu_object in menu_objects:
             self.add_object(menu_object)
@@ -198,7 +198,7 @@ class Game:
         loading_thread.loaded["UI"] = True
 
     def start_game(self):
-        self.player.rect.topleft = (400, 400)
+        self.player.rect.topleft = (400, 300)
         self.game_camera_looking_at = self.player.rect.centerx
         self.game_mode = "normal"
         self.reset_object_lists()
@@ -226,7 +226,8 @@ class Game:
             self.add_object(menu_object)
         self.init_ui_menu()
         self.game_mode = "menu"
-        self.player.rect.center = (530, 650)
+        self.player.gravity = 0
+        self.player.rect.center = (-25, 300)
         pg.mixer.music.load('assets/music/' + self.musics[0]),
         pg.mixer.music.play()
         self.music_index = 1
@@ -239,15 +240,21 @@ class Game:
 
     def get_scroll(self) -> vec:
         if self.game_mode == "menu":
-            self.camera_fixed_y = 440
+            self.camera_fixed_y = 200
             looking_point = vec(self.camera_following_object.center)
             self.camera_free = False
         else:
             looking_point = vec(self.player.rect.center)
-            if looking_point.y > 760:
-                looking_point.y = 760
-            elif looking_point.y < 100:
-                looking_point.y = 100
+            if self.map.get_environment(self.player) != "moon":
+                if looking_point.y > 390:
+                    looking_point.y = 390
+                elif looking_point.y < 100:
+                    looking_point.y = 100
+            else:
+                if looking_point.y < 280:
+                    looking_point.y = 280
+                elif looking_point.y > 390:
+                    looking_point.y = 390
             self.camera_fixed_y = None
             self.camera_fixed_x = None
 
@@ -276,41 +283,41 @@ class Game:
         return -self.camera_looking_at + (1 / 2) * vec(self.screen.get_size())
 
     def init_ui_menu(self):
-        fonts = {"normal": pg.font.Font("assets/fonts/DISTRO__.ttf", 30),
-                 "bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 35),
-                 "title_bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 50)}
-        texts = [[(950, 240), "Controls", "bold"],
-                 [(900, 300), f"Go left: {pg.key.name(self.player.KEYS['Left']).capitalize()}"],
-                 [(900, 340), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
-                 [(900, 380), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
-                 [(900, 420), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
-                 [(800, 600), "Go this way ->", "bold"],
-                 [(800, 640), "(Select with the ENTER key)"],
-                 [(0, 200), "Welcome to Cube's hidden dimensions !", "bold"],
-                 [(50, 300), "You're here to travel as far as you can,"],
-                 [(50, 340), "in the several dimensions of Cube's world."],
-                 [(50, 380), "Each dimension has a particularity you must"],
-                 [(50, 420), "discover..."],
-                 [(50, 480), "The farthest you travel, the higher your score."],
-                 [(50, 520), "Though be careful ! Your score will decrease if"],
-                 [(50, 560), "you don't move for too long."],
-                 [(150, 650), "Have fun !"],
-                 [(-12200, 340), "Looking for the easter egg huh ?", "bold"],
-                 [(-20000, 340), "Really determined aren't you ?", "bold"],
-                 [(-28000, 340), "Your determination will pay off...", "bold"]]
-        self.chad_easter_egg_rect.topleft = (-35000, 440)
-        titles = [[(1520, 440), "Play", "title_bold"],
-                  [(1800, 440), "Settings", "title_bold"],
-                  [(2150, 440), "Quit", "title_bold"]]
+        fonts = {"normal": pg.font.Font("assets/fonts/DISTRO__.ttf", 28),
+                 "bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 33),
+                 "title_bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 40)}
+        texts = [[(300, 40), "Controls", "bold"],
+                 [(250, 100), f"Go left: {pg.key.name(self.player.KEYS['Left']).capitalize()}"],
+                 [(250, 140), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
+                 [(250, 180), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
+                 [(250, 220), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
+                 [(200, 300), "Go this way ->", "bold"],
+                 [(200, 340), "(Select with the ENTER key)"],
+                 [(-540, -20), "Welcome to Cube's hidden dimensions !", "bold"],
+                 [(-490, 50), "You're here to travel as far as you can,"],
+                 [(-490, 90), "in the several dimensions of Cube's world."],
+                 [(-490, 130), "Each dimension has a particularity you must"],
+                 [(-490, 170), "discover..."],
+                 [(-490, 210), "The farthest you travel, the higher your score."],
+                 [(-490, 250), "Though be careful ! Your score will decrease if"],
+                 [(-490, 290), "you don't move for too long."],
+                 [(-400, 350), "Have fun !"],
+                 [(-4500, 200), "Looking for the easter egg huh ?", "bold"],
+                 [(-9000, 200), "Really determined aren't you ?", "bold"],
+                 [(-13500, 200), "Your determination will pay off...", "bold"]]
+        self.chad_easter_egg_rect.topleft = (-17500, 300)
+        titles = [[(940, 200), "Play", "title_bold"],
+                  [(1100, 200), "Settings", "title_bold"],
+                  [(1340, 200), "Quit", "title_bold"]]
 
         self.beacons = {}
         self.ui_objects = []
         for data in texts:
             font = fonts["normal"] if len(data) < 3 else fonts[data[-1]]
-            self.ui_objects.append(create_bg_text(data[0], font, data[1], pg.Color(255, 255, 255), shadow_=(2, 2)))
+            self.ui_objects.append(create_bg_text(data[0], font, data[1], pg.Color(255, 255, 255), shadow_=(1, 1)))
         for pos, title, font_id in titles:
             self.ui_objects.append(Title(pos, fonts[font_id], title, color=pg.Color(255, 255, 255),
-                                         big_scale=1.5, scaling_delay=120, shadow_=(3, 3)))
+                                         big_scale=1.5, scaling_delay=120, shadow_=(2, 2)))
 
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
         self.beacons = {dat[0]: [dat[1], self.ui_objects[19 + idx], False] for idx, dat in
@@ -630,7 +637,7 @@ class Game:
         # print(self.scroll)
         self.screen = self.app.screen
         # self.game_mode = self.map.get_environment(self.player)
-        # print(self.player.rect.center, self.player.vel.x)
+        print(self.player.rect.center, self.player.vel.x)
         if not self.map.menu:
             if self.player.rect.x > self.max_x:
                 self.score += (self.player.rect.x - self.max_x) / 10
