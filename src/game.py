@@ -163,6 +163,7 @@ class Game:
         self.beacons_funcs: dict[str, Callable] = {
             "Play": self.start_game,
             "Settings": self.start_settings,
+            "Leaderboard": self.start_leaderboard,
             "Quit": self._quit
         }
 
@@ -209,6 +210,13 @@ class Game:
         pg.mixer.music.play()
         self.max_x = self.player.rect.x
         self.score = 0
+
+        if self.app.client_name == '':
+            self.app.connect(self.app.leader_board_menu.input_text(self.app.screen.copy()))
+
+    def start_leaderboard(self):
+        self.app.leader_board_menu.running = True
+        self.app.leader_board_menu.run(self.screen.copy())
 
     def reset_object_lists(self):
         self.objects = [self.player]
@@ -306,9 +314,10 @@ class Game:
                  [(-9000, 200), "Really determined aren't you ?", "bold"],
                  [(-13500, 200), "Your determination will pay off...", "bold"]]
         self.chad_easter_egg_rect.topleft = (-17500, 300)
-        titles = [[(940, 200), "Play", "title_bold"],
-                  [(1100, 200), "Settings", "title_bold"],
-                  [(1340, 200), "Quit", "title_bold"]]
+        titles = [[(790, 200), "Play", "title_bold"],
+                  [(1000, 200), "Settings", "title_bold"],
+                  [(1230, 200), "Leaderboard", "title_bold"],
+                  [(1530, 200), "Quit", "title_bold"]]
 
         self.beacons = {}
         self.ui_objects = []
@@ -321,7 +330,7 @@ class Game:
 
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
         self.beacons = {dat[0]: [dat[1], self.ui_objects[19 + idx], False] for idx, dat in
-                        enumerate(zip(["Play", "Settings", "Quit"], all_beacons))}
+                        enumerate(zip(["Play", "Settings", "Leaderboard", "Quit"], all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
         environment = self.map.get_environment(moving_object)
@@ -631,6 +640,7 @@ class Game:
 
     def kill_player(self):
         self.player.dead = True
+        self.app.post_score(round(self.score))
         self.player_death_sound.play()
         self.init_death_screen()
 

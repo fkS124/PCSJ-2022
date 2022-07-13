@@ -4,6 +4,9 @@ from threading import Thread
 from .game import Game
 from .objects import vec
 from .settings import SettingsMenu
+from .leaderboard import LeaderBoard
+
+import scoreunlocked
 
 
 class LoadingThread(Thread):
@@ -24,6 +27,21 @@ class LoadingThread(Thread):
             self.instance.game = Game(self.instance, self)
         except Exception as e:
             self.exception = e
+
+
+class PostingThread(Thread):
+
+    def __init__(self, app, name, score):
+        super(PostingThread, self).__init__()
+        self.client = app.client
+        self.client_name = name
+        self.score = score
+        self.app = app
+
+    def run(self) -> None:
+        self.client.connect("fks124", self.app.ldb_key)
+        self.client.post_score(name=self.client_name, score=self.score)
+        self.app.leader_board_menu.refresh()
 
 
 class App:
@@ -57,6 +75,7 @@ class App:
 
         self.key_preset = "Arrow Keys"
         self.settings_menu = None
+        self.leader_board_menu = None
 
         # frame rate
         self.clock = pg.time.Clock()
@@ -66,10 +85,45 @@ class App:
         self.play_sound = True
         self.play_music = True
 
+        try:
+            self.client = scoreunlocked.Client()
+        except:
+            self.client = None
+
+        self.ldb_key = 'cubes-hidden-dimensions'
+        self.client_name = ''
+        self.leader_board = ''
+
+        self.connect("")
+
     @staticmethod
     def quit_():
         pg.quit()
         raise SystemExit
+
+    def connect(self, user_name):
+        if self.client is not None:
+            self.client.connect('fks124', self.ldb_key)
+            self.leader_board = self.client.get_leaderboard()
+
+        if self.client is not None and user_name != '':
+            self.client_name = user_name
+
+    def post_score(self, score: int):
+        if self.client is not None and self.client_name != "":
+            PostingThread(self, self.client_name, score).start()
+
+    def get_leaderboard(self):
+        if self.client is not None:
+            self.leader_board = sorted(ldb, key=lambda x: -x[1]) \
+                if isinstance(ldb := self.client.get_leaderboard(), list) else None
+
+    def get_rank(self, user_name) -> int:
+        ldb = self.leader_board
+        for idx, rank in enumerate(ldb):
+            if rank[0] == user_name:
+                return idx
+        return -1
 
     def preset_wasd(self):
         self.key_preset = "WASD"
@@ -151,11 +205,13 @@ class App:
 
         self.game.objects[0].do_binding()
         self.settings_menu = SettingsMenu(self)
+        self.leader_board_menu = LeaderBoard(self)
 
         while self.running:
 
             for event in pg.event.get():
                 if event.type == pg.QUIT:
+                    print(self.get_leaderboard())
                     self.quit_()
 
                 self.game.handle_events(event)
