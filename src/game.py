@@ -1,5 +1,6 @@
 import pygame as pg
 from typing import Callable
+from copy import copy
 from pygame.gfxdraw import filled_polygon, aapolygon
 from .objects import (
     DynamicObject,
@@ -105,7 +106,10 @@ class Game:
 
         self.max_x = 0
         self.score = 0
+        self.last_frame_score = 0
+        self.not_moving_frames = 0
         score_font = pg.font.Font("assets/fonts/DISTROB_.ttf", 40)
+        warning_font = pg.font.Font("assets/fonts/DISTRO__.ttf", 30)
         self.score_text = Text((self.screen.get_width() // 2, 50), score_font, "Score : 0", pg.Color(255, 255, 255),
                                shadow_=(2, 2), centered=True)
 
@@ -275,13 +279,22 @@ class Game:
         fonts = {"normal": pg.font.Font("assets/fonts/DISTRO__.ttf", 30),
                  "bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 35),
                  "title_bold": pg.font.Font("assets/fonts/DISTROB_.ttf", 50)}
-        texts = [[(250, 340), "Controls", "bold"],
-                 [(200, 400), f"Go left: {pg.key.name(self.player.KEYS['Left']).capitalize()}"],
-                 [(200, 440), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
-                 [(200, 480), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
-                 [(200, 520), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
-                 [(800, 440), "Go this way ->", "bold"],
-                 [(800, 500), "(Select with the ENTER key)"],
+        texts = [[(950, 240), "Controls", "bold"],
+                 [(900, 300), f"Go left: {pg.key.name(self.player.KEYS['Left']).capitalize()}"],
+                 [(900, 340), f"Go right: {pg.key.name(self.player.KEYS['Right']).capitalize()}"],
+                 [(900, 380), f"Jump: {pg.key.name(self.player.KEYS['Jump']).capitalize()}"],
+                 [(900, 420), f"Dash: {pg.key.name(self.player.KEYS['Dash']).capitalize()}"],
+                 [(800, 600), "Go this way ->", "bold"],
+                 [(800, 640), "(Select with the ENTER key)"],
+                 [(0, 200), "Welcome to Cube's hidden dimensions !", "bold"],
+                 [(50, 300), "You're here to travel as far as you can,"],
+                 [(50, 340), "in the several dimensions of Cube's world."],
+                 [(50, 380), "Each dimension has a particularity you must"],
+                 [(50, 420), "discover..."],
+                 [(50, 480), "The farthest you travel, the higher your score."],
+                 [(50, 520), "Though be careful ! Your score will decrease if"],
+                 [(50, 560), "you don't move for too long."],
+                 [(150, 650), "Have fun !"],
                  [(-12200, 340), "Looking for the easter egg huh ?", "bold"],
                  [(-20000, 340), "Really determined aren't you ?", "bold"],
                  [(-28000, 340), "Your determination will pay off...", "bold"]]
@@ -300,7 +313,7 @@ class Game:
                                          big_scale=1.5, scaling_delay=120, shadow_=(3, 3)))
 
         all_beacons = [obj for obj in self.objects if hasattr(obj, "tag") and obj.tag == "beacon"]
-        self.beacons = {dat[0]: [dat[1], self.ui_objects[10 + idx], False] for idx, dat in
+        self.beacons = {dat[0]: [dat[1], self.ui_objects[19 + idx], False] for idx, dat in
                         enumerate(zip(["Play", "Settings", "Quit"], all_beacons))}
 
     def collision_algorithm(self, moving_object: DynamicObject):
@@ -598,7 +611,7 @@ class Game:
         self.ui_objects[-1].FIXED = True
         self.ui_objects[-1].IN_BACKGROUND = False
         self.ui_objects.append(Text((self.screen.get_width()//2, int(self.screen.get_height()*3/7 + 50)),
-                                    fonts[0], f"Your score : {self.score}", pg.Color(255, 255, 255), centered=True))
+                                    fonts[0], f"Your score : {round(self.score)}", pg.Color(255, 255, 255), centered=True))
         self.ui_objects[-1].FIXED = True
         self.ui_objects[-1].IN_BACKGROUND = False
         self.ui_objects.append(Button(
@@ -739,6 +752,16 @@ class Game:
             self.score_text.modify_content(f"Score : {round(self.score)}")
             self.score_text.draw(self.app.screen)
 
+        if self.last_frame_score == self.score:
+            self.not_moving_frames += 1
+        else:
+            self.not_moving_frames = 0
+
+        if self.not_moving_frames > 20 and not self.map.menu and not self.player.dead:
+            if self.score > 0:
+                self.score -= 0.25
+
+        self.last_frame_score = copy(self.score)
         # DEATH CONDITIONS --------------------
         if self.player.rect.y > 1160 and not self.player.dead:
             self.kill_player()
