@@ -16,25 +16,6 @@ def darker(color: tuple[int, ...] | pg.Color, degree: int) -> pg.Color:
     return pg.Color(new_color)
 
 
-class SpriteLoader:
-
-    def __init__(self, app, tile_w, tile_h):
-        self.app = app
-
-        self.sprites: dict[str, pg.Surface] = {
-            "moon": self.resize(tile_w, tile_h, self.load("assets/sprites/moon_1.png")),
-            "star": self.resize(tile_w, tile_h, self.load("assets/sprites/star_1.png"))
-        }
-
-    @staticmethod
-    def resize(w, h, img: pg.Surface):
-        return pg.transform.smoothscale(img, (w, h))
-
-    @staticmethod
-    def load(path: str):
-        return pg.image.load(path).convert()
-
-
 class TileSprite(StaticObject):
 
     """
@@ -51,19 +32,16 @@ class TileSprite(StaticObject):
         "moon_sand": {"default": pg.Color(150, 150, 150), "top": pg.Color(125, 140, 130)}
     }
 
-    def __init__(self, pos: vec, size: vec, tag: str, sprite_loader: SpriteLoader, color=pg.Color(255, 0, 0),
+    def __init__(self, pos: vec, size: vec, tag: str, color=pg.Color(255, 0, 0),
                  unbreakable=False):
         super(TileSprite, self).__init__(pos, pg.Surface(size, pg.SRCALPHA))
         self.unbreakable = unbreakable
 
         # SPRITE ANIMATION ------------------------------
-        self.sprite_loader = sprite_loader
         self.color = color
         self.tag = tag
         self.style = "neon" if "neon" in tag else "normal"
-        if tag in self.sprite_loader.sprites:
-            self.surface = self.sprite_loader.sprites[tag]
-        elif tag in self.special_color_set:
+        if tag in self.special_color_set:
             self.color = self.special_color_set[tag]["default"]
             for key, item in self.special_color_set[tag].items():
                 if key in self.colors:
@@ -165,26 +143,22 @@ class Map:
         self.vertical_only = False
         self.app = app
         self.tile_size = vec(80, 80)
-        self.sprite_loader = SpriteLoader(app, self.tile_size.x, self.tile_size.y)
         self.chunk_size = vec(15, 11)
 
         self.translate = {
-            4: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "spike", self.sprite_loader,
-                                              unbreakable=True)),
-            3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color", self.sprite_loader,
-                                              unbreakable=True)),
-            10: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "grass", self.sprite_loader)),
-            11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone", self.sprite_loader)),
-            12: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "beacon", self.sprite_loader,
-                                               color=pg.Color(150, 150, 0))),
+            4: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "spike")),
+            3: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "color")),
+            10: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "grass")),
+            11: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "stone")),
+            12: (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "beacon", color=pg.Color(150, 150, 0))),
             13: (lambda map_, x, y: Canon(map_.app, vec(x, y))),
-            "moon_sand": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_sand", self.sprite_loader,
+            "moon_sand": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_sand",
                                                         color=pg.Color(150, 150, 150))),
-            "neon_block": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon", self.sprite_loader,
+            "neon_block": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon",
                                                          color=pg.Color(255, 182, 193))),
-            "neon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon_spike", self.sprite_loader,
+            "neon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "neon_spike",
                                                          color=pg.Color(0, 0, 0))),
-            "moon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_spike", self.sprite_loader,
+            "moon_spike": (lambda map_, x, y: TileSprite(vec(x, y), map_.tile_size, "moon_spike",
                                                          color=pg.Color(125, 100, 125)))
         }
 
