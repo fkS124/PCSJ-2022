@@ -25,9 +25,8 @@ class Bullet(Monster):
 
     ABSOLUTE_DRAW = True
 
-    def __init__(self, app, pos, size, vel: vec, sprite_loader, color=(255, 0, 0)):
+    def __init__(self, app, pos, size, vel: vec, color=(255, 0, 0)):
         super(Bullet, self).__init__(app, pos, size)
-        self.sprite_loader = sprite_loader
         self.rect.centerx = pos[0]
         self.base_vel = vel
         self.length3d = 23
@@ -62,6 +61,5 @@ class Canon(StaticObject):
             self.last_add = pg.time.get_ticks()
             self.app.game.add_object(
                 Bullet(self.app, (self.rect.centerx, self.rect.y-self.bullet_size[1]), self.bullet_size, vec(0, -10),
-                       self.app.game.map.sprite_loader,
                        color=(255, 0, 0) if self.app.game.map.get_environment(self) != "moon" else (125, 100, 125))
             )
