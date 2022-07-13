@@ -5,9 +5,7 @@ from .game import Game
 from .objects import vec
 from .settings import SettingsMenu
 
-
 class LoadingThread(Thread):
-
     def __init__(self, instance):
         super().__init__()
         self.instance = instance
@@ -25,25 +23,19 @@ class LoadingThread(Thread):
         except Exception as e:
             self.exception = e
 
-
 class App:
     def __init__(self) -> None:
-        if not pg.get_init():
-            pg.mixer.pre_init()
-            pg.init()
-            pg.mixer.init()
-
+        pg.init()
         self.window_flags = pg.SCALED
         self.window_size = 1400, 860
-        self.vsync = True
         if len(size := pg.display.get_desktop_sizes()) == 1:
             w, h = size[0]
             if w < self.window_size[0] or h < self.window_size[1]:
                 self.window_flags = pg.SCALED | pg.FULLSCREEN
 
-        self.screen = pg.display.set_mode(self.window_size, self.window_flags, vsync=self.vsync)
+        self.screen = pg.display.set_mode(self.window_size, self.window_flags, vsync=True)
         pg.display.set_caption("Cube's hidden dimensions")
-        pg.display.set_icon(pg.image.load("assets/sprites/icon.png"))
+        pg.display.set_icon(pg.image.load("assets/sprites/icon.png").convert())
     
         self.running = True
         self.game: Game | None = None
@@ -90,11 +82,11 @@ class App:
 
         title_font = pg.font.Font("assets/fonts/RedPixel.otf", 150)
         title = title_font.render("Cubic Engine", True, (0, 255, 0))
-        title_rect = title.get_rect(center=(self.screen.get_width()//2, self.screen.get_height()//3))
+        title_rect = title.get_rect(center=(self.window_size[0]//2, self.window_size[1]//3))
 
         font = pg.font.Font("assets/fonts/Consolas.ttf", 25)
-        rect = pg.Rect(0, 0, self.screen.get_width() * 2 / 3, 50)
-        rect.center = self.screen.get_width() // 2, self.screen.get_height() // 2
+        rect = pg.Rect(0, 0, self.window_size[0] * 2 / 3, 50)
+        rect.center = tuple(size/2 for size in self.window_size)
         last_sum = 0
         progression = 0
         dx = 0.1
